@@ -8,13 +8,17 @@
 import {ENDPOINTS} from '../constants/api';
 import {request} from './axiosInstance';
 
-export const loginApi = async ({mobile, password}) => {
-  const {data} = await request({
+export const loginApi = async ({userId, password}) => {
+  const response = await request({
     method: 'POST',
     url: ENDPOINTS.AUTH.LOGIN,
-    data: {mobile, password},
+    data: {
+      user_Id: userId,
+      password,
+    },
   });
-  return data; // { token, user: { id, name, mobile, role, facility } }
+  
+  return response;
 };
 
 export const meApi = async () => {

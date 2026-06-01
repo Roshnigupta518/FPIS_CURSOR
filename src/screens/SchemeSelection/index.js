@@ -83,7 +83,7 @@ const SchemeSelectionScreen = ({navigation}) => {
             )}
             ListEmptyComponent={
               <EmptyItem
-                icon="\u2139"
+                icon="📭"
                 title={t('NO_DATA')}
                 description={
                   isHi

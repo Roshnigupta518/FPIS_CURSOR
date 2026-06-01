@@ -28,13 +28,29 @@ import {getItem, removeItem, setItem, StorageKeys} from '../../utils/storage';
 
 export const login = createAsyncThunk(
   'auth/login',
-  async ({mobile, password, loginType}, {rejectWithValue}) => {
+  async ({userId, password}, {rejectWithValue}) => {
     try {
-      const data = await loginApi({mobile, password});
-      console.log({loginData: JSON.stringify(data)})
-      await setItem(StorageKeys.AUTH_TOKEN, data.token);
-      await setItem(StorageKeys.USER, data.user);
-      return {...data, loginType};
+      const response = await loginApi({userId, password});
+
+      // console.log('login response', response);
+      
+      if (!response?.success || !response?.data) {
+        return rejectWithValue(
+          response?.message || 'Invalid User Id or password.',
+        );
+      }
+      
+      await setItem(
+        StorageKeys.AUTH_TOKEN,
+        response.data.token,
+      );
+      
+      await setItem(
+        StorageKeys.USER,
+        response.data.user,
+      );
+      
+      return response.data;
     } catch (err) {
       return rejectWithValue(err?.message || 'Invalid credentials');
     }

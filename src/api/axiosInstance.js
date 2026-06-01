@@ -104,10 +104,11 @@ apiClient.interceptors.response.use(
  */
 export const request = async (config, {raw = false} = {}) => {
   const response = await apiClient(config);
-  console.log({response: JSON.stringify(response.data)})
-  if (raw) return response.data;
+  console.log({response: response.data})
+  if (raw) return response;
   // Backend envelope: { success, message, data, meta }
   return {
+    success: response.data?.success,
     data: response.data?.data,
     meta: response.data?.meta,
     message: response.data?.message,

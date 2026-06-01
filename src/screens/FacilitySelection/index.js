@@ -115,7 +115,7 @@ const FacilitySelectionScreen = ({navigation}) => {
             )}
             ListEmptyComponent={
               <EmptyItem
-                icon="\uD83C\uDFE5"
+                icon="📭"
                 title={t('NO_DATA')}
                 description={
                   isHi

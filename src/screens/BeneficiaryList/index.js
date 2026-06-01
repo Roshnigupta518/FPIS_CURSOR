@@ -202,7 +202,7 @@ const BeneficiaryListScreen = ({navigation}) => {
           ListEmptyComponent={
             !loading && (
               <EmptyItem
-                icon="\uD83D\uDC65"
+                icon="📭"
                 title={t('NO_BENEFICIARIES')}
                 description={t('NO_BENEFICIARIES_DESC')}
                 actionLabel={t('ADD_BENEFICIARY')}

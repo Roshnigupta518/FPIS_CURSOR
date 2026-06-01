@@ -57,8 +57,8 @@ const LoginScreen = () => {
   const {t, i18n} = useTranslation();
   const {loading, error, loginType} = useSelector(s => s.auth);
 
-  const [mobile, setMobile] = useState(DEMO_MOBILE[loginType] || '');
-  const [password, setPassword] = useState('');
+  const [userId, setUserId] = useState('FPIS');
+  const [password, setPassword] = useState('Welcome@1');
   const [touched, setTouched] = useState({mobile: false, password: false});
 
   useEffect(() => {
@@ -73,22 +73,22 @@ const LoginScreen = () => {
     }
   }, [error]);
 
-  const mobileError =
-    touched.mobile && !RegexType.MOBILE.test(mobile || '')
-      ? t('ERR_INVALID_MOBILE')
-      : null;
+  const userIdError = '';
   const passwordError =
     touched.password && !RegexType.PASSWORD.test(password || '')
       ? t('ERR_INVALID_TEXT')
       : null;
 
-  const canSubmit =
-    mobile.length > 0 && password.length > 0 && !mobileError && !passwordError;
+      const canSubmit =
+      userId.length > 0 &&
+      password.length > 0 &&
+      !userIdError &&
+      !passwordError;
 
   const handleSelectType = useCallback(
     key => {
-      dispatch(setLoginType(key));
-      setMobile(DEMO_MOBILE[key] || '');
+      // dispatch(setLoginType(key));
+      setMobile(key || '');
     },
     [dispatch],
   );
@@ -96,11 +96,11 @@ const LoginScreen = () => {
   const handleLogin = useCallback(async () => {
     setTouched({mobile: true, password: true});
     if (!canSubmit) return;
-    const result = await dispatch(login({mobile, password, loginType}));
+    const result = await dispatch(login({userId, password}));
     if (login.fulfilled.match(result)) {
       showToast({type: 'success', message: t('WELCOME_BACK')});
     }
-  }, [canSubmit, dispatch, loginType, mobile, password, t]);
+  }, [canSubmit, dispatch, loginType, userId, password, t]);
 
   const toggleLanguage = useCallback(() => {
     changeLanguage(i18n.language === 'hi' ? 'en' : 'hi');
@@ -161,16 +161,16 @@ const LoginScreen = () => {
             </View> */}
 
             <MyInput
-              label={t('MOBILE')}
-              placeholder="10-digit mobile"
-              value={mobile}
-              onChangeText={v => setMobile(v.replace(/[^0-9]/g, '').slice(0, 10))}
+              label={t('USERID')}
+              placeholder="Enter here"
+              value={userId}
+              onChangeText={v => setUserId(v)}
               onBlur={() => setTouched(s => ({...s, mobile: true}))}
               autoCapitalize="none"
-              keyboardType="phone-pad"
-              maxLength={10}
+              // keyboardType="phone-pad"
+              // maxLength={10}
               required
-              error={mobileError}
+              error={userIdError}
               leftIcon={<Text style={styles.fieldIcon}>{'\uD83D\uDCF1'}</Text>}
             />
 

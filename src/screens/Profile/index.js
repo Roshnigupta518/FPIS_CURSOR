@@ -91,8 +91,16 @@ const ProfileScreen = ({navigation}) => {
         </View>
 
         <View style={[styles.card, SHADOWS.card, {padding: 0}]}>
-          <Row label={t('MOBILE')} value={user?.mobile || '—'} />
-          <View style={styles.divider} />
+
+        <Row label={t('DIVISION')} value={user?.division || '—'} />
+        <View style={styles.divider} />
+
+        <Row label={t('DISTRICT')} value={user?.district || '—'} />
+        <View style={styles.divider} />
+
+        <Row label={t('BLOCK')} value={user?.block || '—'} />
+        <View style={styles.divider} />
+         
           {user?.facility ? (
             <>
               <Row
@@ -102,6 +110,10 @@ const ProfileScreen = ({navigation}) => {
               <View style={styles.divider} />
             </>
           ) : null}
+
+        <Row label={t('MOBILE')} value={user?.mobile || '—'} />
+        <View style={styles.divider} />
+
           <Row
             label={t('LANGUAGE')}
             value={i18n.language === 'hi' ? t('HINDI') : t('ENGLISH')}

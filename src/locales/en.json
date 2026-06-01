@@ -85,5 +85,9 @@
   "MIN_HEALTH": "Ministry of Health & Family Welfare",
   "LOGOUT_CONFIRM": "Are you sure you want to logout?",
   "YES": "Yes",
-  "NO": "No"
+  "NO": "No",
+  "DIVISION" : "Division",
+  "DISTRICT" : "District",
+  "BLOCK" : "Block",
+  "USERID" : "User Id"
 }

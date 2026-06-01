@@ -120,7 +120,7 @@ const DashboardScreen = ({navigation}) => {
     {
       key: 'logout',
       title: t('LOGOUT'),
-      icon: '\u23FB',
+      icon: '🚪',
       color: COLORS.error,
       bg: COLORS.errorLight,
       onPress: handleLogout,
@@ -138,7 +138,7 @@ const DashboardScreen = ({navigation}) => {
             </Text>
             <Text style={styles.role}>
               {t(
-                user?.role === 'block'
+                user?.role === 'Block'
                   ? 'BLOCK_LOGIN'
                   : user?.role === 'district'
                   ? 'DISTRICT_LOGIN'
