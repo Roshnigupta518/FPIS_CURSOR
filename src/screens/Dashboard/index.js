@@ -13,7 +13,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View, Button
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
@@ -34,6 +34,7 @@ import {
 } from '../../styles/theme';
 import {changeLanguage} from '../../utils/i18n';
 import {greetingKey} from '../../utils/formatters';
+import { startParichaiAuth } from '../../services/ParichaiAuthService';
 
 const GREETING_KEY_MAP = {
   morning: {en: 'Good morning', hi: 'सुप्रभात'},
@@ -127,6 +128,25 @@ const DashboardScreen = ({navigation}) => {
     },
   ];
 
+  const launchParichai = async () => {
+    try {
+      console.log('1. Before SDK call');
+  
+      const response = await startParichaiAuth({
+        sa: 'LITEMPLTD1',
+        serviceType: '1',
+        encData: 'encrypted_payload',
+        transactionId: 'LITEMPLTD1:20260601120000999',
+        disclosureInfoType: '1',
+        environment: 'PREPROD',
+      });
+  
+      console.log('2. SDK Response', response);
+    } catch (e) {
+      console.log('3. SDK Error', e);
+    }
+  };
+
   return (
     <View style={styles.flex}>
       <SafeAreaView edges={['top']} style={styles.headerSafe}>
@@ -140,7 +160,7 @@ const DashboardScreen = ({navigation}) => {
               {t(
                 user?.role === 'Block'
                   ? 'BLOCK_LOGIN'
-                  : user?.role === 'district'
+                  : user?.role === 'District Hospital'
                   ? 'DISTRICT_LOGIN'
                   : 'MEDICAL_LOGIN',
               )}
@@ -186,6 +206,8 @@ const DashboardScreen = ({navigation}) => {
             </TouchableOpacity>
           ))}
         </View>
+
+        <Button title='check sdk' onPress={()=>launchParichai()} />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>{t('MIN_HEALTH')}</Text>

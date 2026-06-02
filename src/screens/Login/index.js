@@ -57,7 +57,7 @@ const LoginScreen = () => {
   const {t, i18n} = useTranslation();
   const {loading, error, loginType} = useSelector(s => s.auth);
 
-  const [userId, setUserId] = useState('FPIS');
+  const [userId, setUserId] = useState('DH_Bhopal');
   const [password, setPassword] = useState('Welcome@1');
   const [touched, setTouched] = useState({mobile: false, password: false});
 

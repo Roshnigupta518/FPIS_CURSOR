@@ -67,6 +67,8 @@ const ProfileScreen = ({navigation}) => {
     ]);
   }, [dispatch, t]);
 
+  console.log({user})
+
   return (
     <View style={styles.flex}>
       <CustomHeader title={t('PROFILE')} onBack={() => navigation.goBack()} />
@@ -92,13 +94,13 @@ const ProfileScreen = ({navigation}) => {
 
         <View style={[styles.card, SHADOWS.card, {padding: 0}]}>
 
-        <Row label={t('DIVISION')} value={user?.division || '—'} />
+        <Row label={t('DIVISION')} value={user?.facility?.division || '—'} />
         <View style={styles.divider} />
 
-        <Row label={t('DISTRICT')} value={user?.district || '—'} />
+        <Row label={t('DISTRICT')} value={user?.facility?.district || '—'} />
         <View style={styles.divider} />
 
-        <Row label={t('BLOCK')} value={user?.block || '—'} />
+        <Row label={t('BLOCK')} value={user?.facility?.block || '—'} />
         <View style={styles.divider} />
          
           {user?.facility ? (
