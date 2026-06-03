@@ -2,9 +2,9 @@
  * Beneficiary Form screen.
  *
  *  - Dynamic field list driven by getFieldsForScheme().
- *  - On submit, dispatches createBeneficiary OR updateBeneficiary, then
- *    routes to the Face Authentication screen with the saved record so
- *    the multipart face-auth call has a real beneficiary_id.
+ *  - On submit, dispatches createBeneficiary, then routes to the Face
+ *    Authentication screen with the saved record so the multipart
+ *    face-auth call has a real beneficiary_id.
  *  - Server-side validation errors are surfaced inline on the matching
  *    field (mapped from snake_case → camelCase keys) AND as a toast.
  */
@@ -29,11 +29,13 @@ import {showToast} from '../../components/Toast';
 
 import {COLORS} from '../../constants/colors';
 import {ROUTES} from '../../constants/routes';
-import {getFieldsForScheme} from '../../constants/schemes';
+import {
+  getFieldsForScheme,
+  getSchemeKeyFromApi,
+} from '../../constants/schemes';
 import {
   createBeneficiary,
   setDraft,
-  updateBeneficiary,
 } from '../../redux/slices/beneficiarySlice';
 import useForm from '../../hooks/useForm';
 import {
@@ -43,8 +45,6 @@ import {
   SPACING,
 } from '../../styles/theme';
 
-// Translate snake_case keys returned by the backend validator into
-// camelCase form keys we use on the client.
 const SERVER_TO_CLIENT_KEY = {
   beneficiary_name: 'beneficiaryName',
   father_husband_name: 'guardianName',
@@ -57,7 +57,7 @@ const SERVER_TO_CLIENT_KEY = {
   facility_id: 'facilityId',
 };
 
-const BeneficiaryFormScreen = ({navigation, route}) => {
+const BeneficiaryFormScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t, i18n} = useTranslation();
   const isHi = i18n.language === 'hi';
@@ -68,44 +68,31 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
     s => s.beneficiary,
   );
 
-  const existing = route?.params?.beneficiary;
-  const isEdit = Boolean(existing?.id);
+  const schemeKey = useMemo(() => getSchemeKeyFromApi(scheme), [scheme]);
+  const fields = useMemo(() => getFieldsForScheme(schemeKey), [schemeKey]);
 
-  const fields = useMemo(() => getFieldsForScheme(scheme?.key || scheme?.id), [
-    scheme?.key,
-    scheme?.id,
-  ]);
-
-  console.log({scheme, facility})
-
-  const initial = useMemo(() => {
-    const seed = existing || {};
-    return {
-      ...seed,
-      facilityName: facility
-        ? isHi
-          ? facility.nameHi
-          : facility.name
-        : seed.facilityName || '',
-    };
+  const initial = useMemo(
+    () => ({
+      facilityName: facility?.facility_name || '',
+    }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    [],
+  );
 
   const {values, errors, setValue, setError, validate} = useForm(
     fields,
     initial,
   );
 
-  // Keep facility name display in sync if user toggles language.
+  // Keep facility name in sync if the selected facility changes.
   useEffect(() => {
     if (facility) {
-      setValue('facilityName', isHi ? facility.nameHi : facility.name);
+      setValue('facilityName', facility.facility_name || '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHi, facility]);
+  }, [facility]);
 
   // Project server-side field errors back onto the form.
-  // Errors are stored as i18n keys so render-time t() can localize them.
   useEffect(() => {
     if (!serverFieldErrors) return;
     for (const [serverKey, errKey] of Object.entries(serverFieldErrors)) {
@@ -124,23 +111,15 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
       facilityId: facility?.id,
     };
 
-    const action = isEdit
-      ? updateBeneficiary({id: existing.id, form: payload})
-      : createBeneficiary(payload);
+    const result = await dispatch(createBeneficiary(payload));
 
-    const result = await dispatch(action);
-
-    if (
-      createBeneficiary.fulfilled.match(result) ||
-      updateBeneficiary.fulfilled.match(result)
-    ) {
+    if (createBeneficiary.fulfilled.match(result)) {
       const saved = result.payload;
       dispatch(setDraft(saved));
       showToast({
         type: 'success',
-        message: isEdit ? 'Beneficiary updated' : t('FORM_SUBMITTED'),
+        message: t('FORM_SUBMITTED'),
       });
-      // Move on to face authentication using the persisted id.
       navigation.navigate(ROUTES.FACE_AUTHENTICATION, {beneficiary: saved});
     } else {
       showToast({
@@ -150,11 +129,14 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
     }
   };
 
+  const schemeTitle = isHi ? scheme?.scheme_name : scheme?.scheme_name_e;
+  const facilityTitle = facility?.facility_name;
+
   return (
     <View style={styles.flex}>
       <CustomHeader
         title={t('BENEFICIARY_FORM')}
-        subtitle={isHi ? scheme?.scheme_name : scheme?.scheme_name_e}
+        subtitle={schemeTitle}
         onBack={() => navigation.goBack()}
       />
 
@@ -168,11 +150,9 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
           showsVerticalScrollIndicator={false}>
           <View style={styles.banner}>
             <Text style={styles.bannerTitle} numberOfLines={2}>
-              {isHi ? scheme?.scheme_name : scheme?.scheme_name_e}
+              {schemeTitle}
             </Text>
-            <Text style={styles.bannerSubtitle}>
-              {isHi ? facility?.facility_name : facility?.facility_name}
-            </Text>
+            <Text style={styles.bannerSubtitle}>{facilityTitle}</Text>
           </View>
 
           {fields.map(f => {
@@ -215,7 +195,7 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
 
           <View style={{height: SPACING.lg}} />
           <CustomButton
-            title={isEdit ? t('SAVE') : t('CONTINUE')}
+            title={t('CONTINUE')}
             onPress={handleSubmit}
             loading={submitting}
             rightIcon={<Text style={styles.btnArrow}>{'\u2192'}</Text>}

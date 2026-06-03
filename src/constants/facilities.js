@@ -6,7 +6,7 @@
 export const LOGIN_TYPES = {
   BLOCK: 'Block Level',
   DISTRICT: 'District Hospital',
-  MEDICAL: 'medical',
+  MEDICAL: 'Medical College (MC)',
 };
 
 export const FACILITY_TYPES = {

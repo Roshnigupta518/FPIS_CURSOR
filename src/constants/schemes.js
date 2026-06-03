@@ -1,8 +1,3 @@
-/**
- * Scheme master data, facility -> scheme mapping, and dynamic form
- * field definitions used by the Beneficiary Form screen.
- */
-
 import {FACILITY_TYPES} from './facilities';
 
 export const SCHEME_KEYS = {
@@ -61,10 +56,6 @@ export const SCHEMES = {
   },
 };
 
-/**
- * Scheme availability per facility type. Centralized here so screens
- * and reports can share the same source of truth.
- */
 export const FACILITY_SCHEME_MAP = {
   [FACILITY_TYPES.CHC]: [
     SCHEME_KEYS.MALE_STERILIZATION,
@@ -104,8 +95,43 @@ export const getSchemesForFacility = facilityType => {
   return keys.map(k => SCHEMES[k]);
 };
 
+/**
+ * Map an API scheme object (e.g. { id: 1, scheme_name, scheme_name_e })
+ * to one of our local SCHEME_KEYS so we can drive form fields off it.
+ */
+export const getSchemeKeyFromApi = apiScheme => {
+  if (!apiScheme) return null;
+  if (apiScheme.key && SCHEMES[apiScheme.key]) return apiScheme.key;
+  if (typeof apiScheme === 'string' && SCHEMES[apiScheme]) return apiScheme;
+
+  const nameE = String(
+    apiScheme.scheme_name_e || apiScheme.name || '',
+  ).toLowerCase();
+
+  if (
+    nameE.includes('male sterilization') ||
+    nameE.includes('vasectomy') ||
+    nameE.includes('nsv')
+  ) {
+    return SCHEME_KEYS.MALE_STERILIZATION;
+  }
+  if (
+    nameE.includes('female sterilization') ||
+    nameE.includes('tubectomy')
+  ) {
+    return SCHEME_KEYS.FEMALE_STERILIZATION;
+  }
+  if (nameE.includes('antara')) return SCHEME_KEYS.ANTARA_INJECTION;
+  if (nameE.includes('ppiucd') || nameE.includes('postpartum')) {
+    return SCHEME_KEYS.PPIUCD;
+  }
+  if (nameE.includes('compensation')) return SCHEME_KEYS.COMPENSATION;
+
+  return null;
+};
+
 /* -------------------------------------------------------------------------- */
-/*  BENEFICIARY STATUS                                                         */
+/*  BENEFICIARY STATUS                                                        */
 /* -------------------------------------------------------------------------- */
 
 export const BENEFICIARY_STATUS = {
@@ -143,21 +169,9 @@ export const STATUS_META = {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  DYNAMIC FORM FIELD DEFINITIONS                                             */
+/*  DYNAMIC FORM FIELD DEFINITIONS                                            */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Field configuration consumed by the BeneficiaryForm screen.
- * Each entry maps to a reusable MyInput / DatePickerField component.
- *
- * key            - state key on the form
- * label/labelHi  - i18n-aware labels
- * type           - one of: text | number | date | name
- * regex          - key into utils/validation RegexType map
- * required       - boolean
- * keyboardType   - RN keyboardType
- * maxLength      - optional cap
- */
 const BASE_FIELDS = [
   {
     key: 'beneficiaryName',
@@ -203,7 +217,7 @@ const BASE_FIELDS = [
     labelHi: 'मोबाइल नंबर',
     type: 'number',
     regex: 'MOBILE',
-    required: true,
+    required: false,
     keyboardType: 'phone-pad',
     maxLength: 10,
   },
@@ -213,27 +227,27 @@ const BASE_FIELDS = [
     labelHi: 'पता',
     type: 'text',
     regex: 'ADDRESS',
-    required: true,
+    required: false,
     multiline: true,
     maxLength: 200,
   },
-  {
-    key: 'procedureDate',
-    label: 'Procedure Date',
-    labelHi: 'प्रक्रिया की तिथि',
-    type: 'date',
-    required: true,
-    mode: 'date',
-  },
-  {
-    key: 'doctorName',
-    label: 'Doctor Name',
-    labelHi: 'डॉक्टर का नाम',
-    type: 'name',
-    regex: 'NAME',
-    required: true,
-    maxLength: 60,
-  },
+  // {
+  //   key: 'procedureDate',
+  //   label: 'Procedure Date',
+  //   labelHi: 'प्रक्रिया की तिथि',
+  //   type: 'date',
+  //   required: true,
+  //   mode: 'date',
+  // },
+  // {
+  //   key: 'doctorName',
+  //   label: 'Doctor Name',
+  //   labelHi: 'डॉक्टर का नाम',
+  //   type: 'name',
+  //   regex: 'NAME',
+  //   required: true,
+  //   maxLength: 60,
+  // },
   {
     key: 'facilityName',
     label: 'Facility Name',
@@ -255,30 +269,55 @@ const CLAIM_FIELD = {
   maxLength: 20,
 };
 
+const CLAIM_DATE_FIELD = {
+  key: 'claimDate',
+  label: 'Claim Date',
+  labelHi: 'क्लेम तिथि',
+  type: 'date',
+  required: true,
+  mode: 'date',
+};
+
+const DOCTOR_FIELD = {
+    key: 'doctorName',
+    label: 'Doctor Name',
+    labelHi: 'डॉक्टर का नाम',
+    type: 'name',
+    regex: 'NAME',
+    required: true,
+    maxLength: 60,
+};
+
 const FOLLOWUP_FIELD = {
   key: 'followUpDate',
   label: 'Follow-up Date',
   labelHi: 'फॉलो-अप तिथि',
   type: 'date',
-  required: false,
+  required: true,
   mode: 'date',
 };
 
-/**
- * Returns the ordered list of form fields for a given scheme.
- * Some fields (claim id, follow-up) are scheme-specific.
- */
+const DATE_FIELD = {
+    key: 'procedureDate',
+    label: 'Procedure Date',
+    labelHi: 'प्रक्रिया की तिथि',
+    type: 'date',
+    required: true,
+    mode: 'date',
+};
+
 export const getFieldsForScheme = schemeKey => {
   switch (schemeKey) {
     case SCHEME_KEYS.MALE_STERILIZATION:
+      return [...BASE_FIELDS, DATE_FIELD, DOCTOR_FIELD];
     case SCHEME_KEYS.FEMALE_STERILIZATION:
-      return [...BASE_FIELDS, FOLLOWUP_FIELD, CLAIM_FIELD];
+      return [...BASE_FIELDS, DOCTOR_FIELD];
     case SCHEME_KEYS.COMPENSATION:
-      return [...BASE_FIELDS, CLAIM_FIELD];
+      return [...BASE_FIELDS,DATE_FIELD, CLAIM_FIELD, CLAIM_DATE_FIELD];
     case SCHEME_KEYS.ANTARA_INJECTION:
-      return [...BASE_FIELDS, FOLLOWUP_FIELD];
+      return [...BASE_FIELDS,FOLLOWUP_FIELD,];
     case SCHEME_KEYS.PPIUCD:
-      return [...BASE_FIELDS, FOLLOWUP_FIELD];
+      return [...BASE_FIELDS,DOCTOR_FIELD, FOLLOWUP_FIELD];
     default:
       return BASE_FIELDS;
   }

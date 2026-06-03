@@ -101,9 +101,9 @@ const DatePickerField = ({
 const styles = StyleSheet.create({
   wrapper: {marginBottom: SPACING.md},
   label: {
-    fontSize: FONT_SIZE.small,
+    fontSize: FONT_SIZE.body,
     fontWeight: FONT_WEIGHT.medium,
-    color: COLORS.textSecondary,
+    color: COLORS.textPrimary,
     marginBottom: 6,
   },
   required: {color: COLORS.error},
