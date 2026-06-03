@@ -37,16 +37,16 @@ const FacilityCard = ({facility, selected, onPress, disabled = false}) => {
           ]}>
           <Text
             style={[styles.iconText, selected && {color: COLORS.textOnPrimary}]}>
-            {facility.type}
+            {facility.health_facility_type_short}
           </Text>
         </View>
 
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={1}>
-            {isHi ? facility.nameHi : facility.name}
+            {isHi ? facility.nameHi : facility.facility_name}
           </Text>
           <Text style={styles.subtitle} numberOfLines={2}>
-            {isHi ? facility.name : facility.nameHi}
+            {isHi ? facility.district_name : facility.district_name}
           </Text>
         </View>
 

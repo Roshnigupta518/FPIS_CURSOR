@@ -36,6 +36,7 @@ const FacilitySelectionScreen = ({navigation}) => {
   const isHi = i18n.language === 'hi';
 
   const loginType = useSelector(s => s.auth.loginType);
+  const loginDetails = useSelector(s => s.auth.user);
   const {items, loading, error, selected: selectedFromStore} = useSelector(
     s => s.facility,
   );
@@ -45,8 +46,8 @@ const FacilitySelectionScreen = ({navigation}) => {
   const debouncedSearch = useDebouncedValue(search, 200);
 
   useEffect(() => {
-    dispatch(fetchFacilities());
-  }, [dispatch]);
+    dispatch(fetchFacilities(loginDetails.id));
+  }, [dispatch, loginDetails]);
 
   // Keep local selection in sync with redux (handles server preselect).
   useEffect(() => {
@@ -58,16 +59,16 @@ const FacilitySelectionScreen = ({navigation}) => {
   }, [error]);
 
   const filtered = useMemo(() => {
-    if (loginType !== LOGIN_TYPES.BLOCK) return items;
+    if (loginDetails.role !== LOGIN_TYPES.BLOCK) return items;
     const q = debouncedSearch.trim().toLowerCase();
     if (!q) return items;
     return items.filter(
       f =>
-        (f.name || '').toLowerCase().includes(q) ||
-        (f.nameHi || '').toLowerCase().includes(q) ||
-        (f.type || '').toLowerCase().includes(q),
+        (f.facility_name || '').toLowerCase().includes(q) 
+      // || (f.nameHi || '').toLowerCase().includes(q) 
+      || (f.health_facility_type_short || '').toLowerCase().includes(q),
     );
-  }, [items, debouncedSearch, loginType]);
+  }, [items, debouncedSearch, loginDetails]);
 
   const handleContinue = () => {
     if (!selected) return;
@@ -90,7 +91,7 @@ const FacilitySelectionScreen = ({navigation}) => {
       <Container scroll={false} padded>
         <Text style={styles.description}>{t('SELECT_FACILITY_DESC')}</Text>
 
-        {loginType === LOGIN_TYPES.BLOCK ? (
+        {loginDetails.role === LOGIN_TYPES.BLOCK ? (
           <View style={styles.searchWrap}>
             <SearchBar
               value={search}

@@ -20,7 +20,8 @@ export const listSchemesApi = async () => {
 export const listSchemesByFacilityTypeApi = async type => {
   const {data} = await request({
     method: 'GET',
-    url: ENDPOINTS.SCHEMES.BY_FACILITY_TYPE(String(type).toLowerCase()),
+    url: ENDPOINTS.SCHEMES.LIST+type,
   });
-  return (data || []).map(mapScheme);
+  // return (data || []).map(mapScheme);
+  return data
 };

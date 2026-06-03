@@ -4,8 +4,8 @@
  */
 
 export const LOGIN_TYPES = {
-  BLOCK: 'block',
-  DISTRICT: 'district',
+  BLOCK: 'Block Level',
+  DISTRICT: 'District Hospital',
   MEDICAL: 'medical',
 };
 

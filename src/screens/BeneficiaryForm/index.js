@@ -76,6 +76,8 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
     scheme?.id,
   ]);
 
+  console.log({scheme, facility})
+
   const initial = useMemo(() => {
     const seed = existing || {};
     return {
@@ -152,7 +154,7 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
     <View style={styles.flex}>
       <CustomHeader
         title={t('BENEFICIARY_FORM')}
-        subtitle={isHi ? scheme?.nameHi : scheme?.name}
+        subtitle={isHi ? scheme?.scheme_name : scheme?.scheme_name_e}
         onBack={() => navigation.goBack()}
       />
 
@@ -166,10 +168,10 @@ const BeneficiaryFormScreen = ({navigation, route}) => {
           showsVerticalScrollIndicator={false}>
           <View style={styles.banner}>
             <Text style={styles.bannerTitle} numberOfLines={2}>
-              {isHi ? scheme?.nameHi : scheme?.name}
+              {isHi ? scheme?.scheme_name : scheme?.scheme_name_e}
             </Text>
             <Text style={styles.bannerSubtitle}>
-              {isHi ? facility?.nameHi : facility?.name}
+              {isHi ? facility?.facility_name : facility?.facility_name}
             </Text>
           </View>
 

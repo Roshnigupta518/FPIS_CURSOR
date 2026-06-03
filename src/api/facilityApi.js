@@ -10,13 +10,14 @@ import {ENDPOINTS} from '../constants/api';
 import {mapFacility} from '../utils/mappers';
 import {request} from './axiosInstance';
 
-export const listFacilitiesApi = async () => {
+export const listFacilitiesApi = async (user_id) => {
   const {data, meta} = await request({
     method: 'GET',
-    url: ENDPOINTS.FACILITIES.LIST,
+    url: ENDPOINTS.FACILITIES.LIST+user_id,
   });
   return {
-    items: (data || []).map(mapFacility),
+    // items: (data || []).map(mapFacility),
+    items: data,
     meta: meta || {},
   };
 };

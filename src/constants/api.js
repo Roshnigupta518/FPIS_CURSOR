@@ -38,11 +38,11 @@ export const ENDPOINTS = {
     REGISTER: '/auth/register',
   },
   FACILITIES: {
-    LIST: '/facilities',
+    LIST: '/facilities?userId=',
     BY_ID: id => `/facilities/${id}`,
   },
   SCHEMES: {
-    LIST: '/schemes',
+    LIST: '/schemes?facilityTypeId=',
     BY_FACILITY_TYPE: type => `/schemes/${type}`,
   },
   BENEFICIARIES: {

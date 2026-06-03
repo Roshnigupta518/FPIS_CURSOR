@@ -35,6 +35,7 @@ import {
 import {changeLanguage} from '../../utils/i18n';
 import {greetingKey} from '../../utils/formatters';
 import { startParichaiAuth } from '../../services/ParichaiAuthService';
+import { LOGIN_TYPES } from '../../constants/facilities';
 
 const GREETING_KEY_MAP = {
   morning: {en: 'Good morning', hi: 'सुप्रभात'},
@@ -158,9 +159,9 @@ const DashboardScreen = ({navigation}) => {
             </Text>
             <Text style={styles.role}>
               {t(
-                user?.role === 'Block'
+                user?.role === LOGIN_TYPES.BLOCK
                   ? 'BLOCK_LOGIN'
-                  : user?.role === 'District Hospital'
+                  : user?.role === LOGIN_TYPES.DISTRICT
                   ? 'DISTRICT_LOGIN'
                   : 'MEDICAL_LOGIN',
               )}

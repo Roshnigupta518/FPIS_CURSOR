@@ -20,10 +20,10 @@ import {listSchemesByFacilityTypeApi} from '../../api/schemeApi';
 
 export const fetchSchemes = createAsyncThunk(
   'scheme/fetch',
-  async (facilityType, {rejectWithValue}) => {
+  async (facilityTypeId, {rejectWithValue}) => {
     try {
-      const items = await listSchemesByFacilityTypeApi(facilityType);
-      return {facilityType, items};
+      const items = await listSchemesByFacilityTypeApi(facilityTypeId);
+      return {facilityTypeId, items};
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load schemes');
     }

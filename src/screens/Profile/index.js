@@ -30,6 +30,7 @@ import {
   SPACING,
 } from '../../styles/theme';
 import {changeLanguage} from '../../utils/i18n';
+import { LOGIN_TYPES } from '../../constants/facilities';
 
 const Row = ({label, value, onPress}) => (
   <TouchableOpacity
@@ -83,9 +84,9 @@ const ProfileScreen = ({navigation}) => {
           <Text style={styles.name}>{user?.name || '—'}</Text>
           <Text style={styles.role}>
             {t(
-              loginType === 'block'
+              user.role === LOGIN_TYPES.BLOCK
                 ? 'BLOCK_LOGIN'
-                : loginType === 'district'
+                : user.role === LOGIN_TYPES.DISTRICT
                 ? 'DISTRICT_LOGIN'
                 : 'MEDICAL_LOGIN',
             )}
@@ -94,7 +95,7 @@ const ProfileScreen = ({navigation}) => {
 
         <View style={[styles.card, SHADOWS.card, {padding: 0}]}>
 
-        <Row label={t('DIVISION')} value={user?.facility?.division || '—'} />
+        <Row label={t('DIVISION')} value={user?.facility?.devision || '—'} />
         <View style={styles.divider} />
 
         <Row label={t('DISTRICT')} value={user?.facility?.district || '—'} />

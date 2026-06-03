@@ -16,9 +16,9 @@ import {listFacilitiesApi} from '../../api/facilityApi';
 
 export const fetchFacilities = createAsyncThunk(
   'facility/fetch',
-  async (_, {rejectWithValue}) => {
+  async (user_id, {rejectWithValue}) => {
     try {
-      return await listFacilitiesApi();
+      return await listFacilitiesApi(user_id);
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load facilities');
     }

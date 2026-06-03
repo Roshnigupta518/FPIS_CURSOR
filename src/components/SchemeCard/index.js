@@ -35,13 +35,13 @@ const SchemeCard = ({scheme, selected, onPress}) => {
       style={[styles.card, SHADOWS.card, selected && {borderColor: accent}]}>
       <View style={[styles.accentBar, {backgroundColor: accent}]} />
       <View style={styles.body}>
-        <Text style={styles.code}>{scheme.code}</Text>
+        {/* <Text style={styles.code}>{scheme.code}</Text> */}
         <Text style={styles.title} numberOfLines={2}>
-          {isHi ? scheme.nameHi : scheme.name}
+          {isHi ? scheme.scheme_name : scheme.scheme_name_e}
         </Text>
-        <Text style={styles.subtitle} numberOfLines={2}>
+        {/* <Text style={styles.subtitle} numberOfLines={2}>
           {isHi ? scheme.descriptionHi : scheme.description}
-        </Text>
+        </Text> */}
       </View>
 
       <View
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: RADIUS.lg,
     borderBottomLeftRadius: RADIUS.lg,
   },
-  body: {flex: 1, paddingVertical: 4},
+  body: {flex: 1, paddingVertical: 12},
   code: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.caption,

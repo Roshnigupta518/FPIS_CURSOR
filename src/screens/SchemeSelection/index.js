@@ -39,13 +39,18 @@ const SchemeSelectionScreen = ({navigation}) => {
 
   const [selected, setSelected] = useState(prev || null);
 
-  useEffect(() => {
-    if (!facility?.type) return;
-    // Cache: skip refetch when we already loaded for this type.
-    if (lastFacilityType !== facility.type.toLowerCase()) {
-      dispatch(fetchSchemes(facility.type));
-    }
-  }, [dispatch, facility?.type, lastFacilityType]);
+  // console.log({facility, lastFacilityType})
+  // useEffect(() => {
+  //   if (!facility?.type) return;
+  //   // Cache: skip refetch when we already loaded for this type.
+  //   if (lastFacilityType !== facility.type.toLowerCase()) {
+  //     dispatch(fetchSchemes(facility.type));
+  //   }
+  // }, [dispatch, facility?.type, lastFacilityType]);
+
+  useEffect(()=>{
+    dispatch(fetchSchemes(facility.health_facility_type_id));
+  },[dispatch, facility])
 
   useEffect(() => {
     if (error) showToast({type: 'error', message: error});
