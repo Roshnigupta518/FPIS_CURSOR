@@ -144,28 +144,60 @@ export const mapBeneficiary = row => {
  * failing regex validation), normalizes the date fields, and renames
  * the few keys that diverge from straight snake_case.
  */
+// export const beneficiaryToServer = (form, extras = {}) => {
+//   const toDate = v => {
+//     if (!v) return null;
+//     const d = v instanceof Date ? v : new Date(v);
+//     if (Number.isNaN(d.getTime())) return null;
+//     return d.toISOString().slice(0, 10);         // YYYY-MM-DD
+//   };
+
+//   const clean = v => (v === '' || v === undefined ? null : v);
+
+//   return {
+//     beneficiary_name:    form.beneficiaryName,
+//     age:                 form.age ? Number(form.age) : undefined,
+//     father_husband_name: form.guardianName,
+//     samagra_id:          form.samagraId,
+//     mobile:              clean(form.mobile),
+//     address:             clean(form.address),
+//     scheme_id:           Number(form.schemeId ?? extras.schemeId),
+//     facility_id:         Number(form.facilityId ?? extras.facilityId),
+//     doctor_name:         form.doctorName,
+//     procedure_date:      toDate(form.procedureDate),
+//     follow_up_date:      toDate(form.followUpDate),
+//     claim_id:            clean(form.claimId),
+//     referenceKey : form.referenceKey,                              // null when auth failed
+//     transaction_id: form.transaction_id,
+//   };
+// };
+
+
 export const beneficiaryToServer = (form, extras = {}) => {
-  const toDate = v => {
+  const toIso = v => {
     if (!v) return null;
     const d = v instanceof Date ? v : new Date(v);
     if (Number.isNaN(d.getTime())) return null;
-    return d.toISOString().slice(0, 10);         // YYYY-MM-DD
+    return d.toISOString();                       // 2026-06-04T07:08:20.990Z
   };
-
   const clean = v => (v === '' || v === undefined ? null : v);
-
   return {
     beneficiary_name:    form.beneficiaryName,
-    age:                 form.age ? Number(form.age) : undefined,
+    age:                 form.age ? Number(form.age) : 0,
     father_husband_name: form.guardianName,
     samagra_id:          form.samagraId,
     mobile:              clean(form.mobile),
     address:             clean(form.address),
-    scheme_id:           Number(form.schemeId ?? extras.schemeId),
-    facility_id:         Number(form.facilityId ?? extras.facilityId),
+    scheme_id:           Number(form.schemeId       ?? extras.schemeId       ?? 0),
+    facility_id:         Number(form.facilityId     ?? extras.facilityId     ?? 0),
+    facility_type_id:    Number(form.facilityTypeId ?? extras.facilityTypeId ?? 0),
     doctor_name:         form.doctorName,
-    procedure_date:      toDate(form.procedureDate),
-    follow_up_date:      toDate(form.followUpDate),
+    procedure_date:      toIso(form.procedureDate),
+    follow_up_date:      toIso(form.followUpDate),
     claim_id:            clean(form.claimId),
+    auth_status: '',
+    face_auth_image:     '',  // face-auth screen later
+    reference_key:       clean(form.referenceKey),
+    transaction_id:      clean(form.transactionId),
   };
 };

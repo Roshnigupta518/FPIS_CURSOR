@@ -8,7 +8,7 @@
  *  - FAB to start a new beneficiary flow.
  */
 
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState, useRef} from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -47,17 +47,15 @@ import {
 } from '../../styles/theme';
 import useDebouncedValue from '../../hooks/useDebouncedValue';
 
-const STATUS_TABS = [
-  {key: null, labelKey: 'all', label: 'All'},
-  {key: BENEFICIARY_STATUS.PENDING_AUTH, label: 'Pending'},
-  {key: BENEFICIARY_STATUS.AUTH_SUCCESS, label: 'Auth ✓'},
-  {key: BENEFICIARY_STATUS.AUTH_FAILED, label: 'Auth ✗'},
-  {key: BENEFICIARY_STATUS.SUBMITTED, label: 'Submitted'},
-];
 
 const BeneficiaryListScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t} = useTranslation();
+
+
+  // selected facility OR jo user ke saath aata hai
+  const selectedFacility = useSelector(s => s.auth.user);
+  const facilityId = selectedFacility?.facility?.id || null;
 
   const {
     items,
@@ -72,41 +70,36 @@ const BeneficiaryListScreen = ({navigation}) => {
   const [searchInput, setSearchInput] = useState(filters.search || '');
   const debouncedSearch = useDebouncedValue(searchInput, 350);
 
+    // momentum-scroll guard: onEndReached ko mount-time pe block karte hain.
+    const onEndReachedAllowed = useRef(false);
+
   /* ------------ initial load + search re-fetch ----------- */
   useEffect(() => {
     dispatch(
       fetchBeneficiaries({
         reset: true,
-        filters: {...filters, search: debouncedSearch},
+        filters: {...filters, search: debouncedSearch,facilityId,},
       }),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
-
-  /* ------------ initial mount ----------- */
-  useEffect(() => {
-    dispatch(fetchBeneficiaries({reset: true}));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [debouncedSearch, facilityId]);
 
   const handleRefresh = useCallback(() => {
-    dispatch(fetchBeneficiaries({reset: true}));
-  }, [dispatch]);
+    onEndReachedAllowed.current = false;
+    dispatch(
+      fetchBeneficiaries({
+        reset: true,
+        filters: {...filters, search: debouncedSearch, facilityId},
+      }),
+    );
+  }, [dispatch, filters, debouncedSearch, facilityId]);
 
   const handleEndReached = useCallback(() => {
-    if (hasMore && !loadingMore) {
-      dispatch(fetchMoreBeneficiaries());
-    }
+    if (!hasMore || loadingMore) return;
+  
+    dispatch(fetchMoreBeneficiaries());
   }, [dispatch, hasMore, loadingMore]);
 
-  const handleStatusTab = useCallback(
-    statusKey => {
-      const next = {...filters, status: statusKey};
-      dispatch(setFilters({status: statusKey}));
-      dispatch(fetchBeneficiaries({reset: true, filters: next}));
-    },
-    [dispatch, filters],
-  );
 
   const handleAdd = useCallback(() => {
     dispatch(clearFacility());
@@ -154,32 +147,6 @@ const BeneficiaryListScreen = ({navigation}) => {
         />
       </View>
 
-      {/* Status filter tabs */}
-      <View style={styles.tabsWrap}>
-        <FlatList
-          data={STATUS_TABS}
-          keyExtractor={tab => String(tab.key)}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsContent}
-          renderItem={({item: tab}) => {
-            const active = filters.status === tab.key;
-            return (
-              <TouchableOpacity
-                onPress={() => handleStatusTab(tab.key)}
-                activeOpacity={0.85}
-                style={[styles.tab, active && styles.tabActive]}>
-                <Text
-                  style={[styles.tabText, active && styles.tabTextActive]}
-                  numberOfLines={1}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          }}
-        />
-      </View>
-
       {loading && items.length === 0 ? (
         <Loader text={t('LOADING')} />
       ) : (
@@ -196,7 +163,10 @@ const BeneficiaryListScreen = ({navigation}) => {
               colors={[COLORS.primary]}
             />
           }
-          onEndReachedThreshold={0.4}
+          onMomentumScrollBegin={() => {
+            onEndReachedAllowed.current = true;
+          }}
+          onEndReachedThreshold={0.5}
           onEndReached={handleEndReached}
           ListFooterComponent={ListFooter}
           ListEmptyComponent={

@@ -62,15 +62,21 @@ export const fetchMoreBeneficiaries = createAsyncThunk(
   'beneficiary/fetchMore',
   async (_, {getState, rejectWithValue}) => {
     try {
-      const {page, limit, hasMore, filters, loadingMore} =
+      const {page, limit, hasMore, filters} =
         getState().beneficiary;
-      if (!hasMore || loadingMore) return null;
+
+      if (!hasMore) return null;
+
       const nextPage = page + 1;
+
+      console.log('NEXT PAGE =>', nextPage);
+
       const res = await listBeneficiariesApi({
         ...filters,
         page: nextPage,
         limit,
       });
+
       return res;
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load more');

@@ -50,8 +50,13 @@ const DashboardScreen = ({navigation}) => {
   const beneficiaries = useSelector(s => s.beneficiary.items);
 
   useEffect(() => {
-    dispatch(fetchBeneficiaries());
-  }, [dispatch]);
+    dispatch(
+      fetchBeneficiaries({
+        reset: true,
+        filters: {facilityId: user?.facility?.id || null},
+      }),
+    );
+  }, [dispatch, user]);
 
   const greeting = GREETING_KEY_MAP[greetingKey()][i18n.language] ||
     GREETING_KEY_MAP[greetingKey()].en;

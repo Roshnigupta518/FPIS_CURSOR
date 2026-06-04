@@ -43,7 +43,7 @@ const BeneficiaryCard = ({item, onPress}) => {
             <Text style={styles.name} numberOfLines={1}>
               {item.beneficiaryName}
             </Text>
-            <StatusBadge status={item.status} />
+            {/* <StatusBadge status={item.status} /> */}
           </View>
 
           <Text style={styles.meta} numberOfLines={1}>

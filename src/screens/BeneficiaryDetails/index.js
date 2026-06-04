@@ -133,7 +133,6 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
       </View>
     );
   }
-
   return (
     <View style={styles.flex}>
       <CustomHeader
@@ -160,13 +159,13 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
               </Text>
             </View>
           </View>
-          <View style={styles.heroFooter}>
+          {/* <View style={styles.heroFooter}>
             <Text style={styles.statusLabel}>{t('STATUS')}</Text>
             <StatusBadge status={item.status} size="md" />
-          </View>
+          </View> */}
         </View>
 
-        <SectionCard title={t('PERSONAL_DETAILS')} icon="\uD83D\uDC64">
+        <SectionCard title={t('PERSONAL_DETAILS')} icon="👤">
           <DetailRow label={t('BENEFICIARY_NAME')} value={item.beneficiaryName} />
           <DetailRow label={t('GUARDIAN_NAME')} value={item.guardianName} />
           <DetailRow label={t('AGE')} value={item.age} />
@@ -175,7 +174,7 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
           <DetailRow label={t('ADDRESS')} value={item.address} />
         </SectionCard>
 
-        <SectionCard title={t('SCHEME_DETAILS')} icon="\uD83D\uDCC4">
+        <SectionCard title={t('SCHEME_DETAILS')}  icon="📋">
           <DetailRow label={t('SCHEME')} value={item.schemeName} />
           {item.claimId ? (
             <DetailRow label={t('CLAIM_ID')} value={item.claimId} />
@@ -192,10 +191,12 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
               value={formatDate(item.followUpDate)}
             />
           ) : null}
+          {item.doctorName &&
           <DetailRow label={t('DOCTOR_NAME')} value={item.doctorName} />
+          }
         </SectionCard>
 
-        <SectionCard title={t('FACILITY_DETAILS')} icon="\uD83C\uDFE5">
+        <SectionCard title={t('FACILITY_DETAILS')} icon="🏥">
           <DetailRow label={t('FACILITY')} value={item.facilityName} />
           {item.facilityType ? (
             <DetailRow label="Type" value={item.facilityType} />
@@ -204,7 +205,7 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
         </SectionCard>
 
         {/* Actions */}
-        <View style={styles.actions}>
+        {/* <View style={styles.actions}>
           {canAuth ? (
             <CustomButton
               title={t('FACE_AUTHENTICATION')}
@@ -236,7 +237,7 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
               <Text style={styles.completedText}>{t('FORM_SUBMITTED')}</Text>
             </View>
           ) : null}
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

@@ -44,6 +44,8 @@ import {
   RADIUS,
   SPACING,
 } from '../../styles/theme';
+import { startParichaiAuth } from '../../services/ParichaiAuthService';
+import { prepareAadhaarRequest } from '../../api/AadhaarGatewayService';
 
 const SERVER_TO_CLIENT_KEY = {
   beneficiary_name: 'beneficiaryName',
@@ -101,34 +103,106 @@ const BeneficiaryFormScreen = ({navigation}) => {
     }
   }, [serverFieldErrors, setError]);
 
+
+  const launchParichai = async () => {
+    try {
+      console.log('1. Before SDK call');
+  
+      const response = await startParichaiAuth({
+        sa: 'LITEMPLTD1',
+        serviceType: '1',
+        encData: 'encrypted_payload',
+        transactionId: 'LITEMPLTD1:20260601120000999',
+        disclosureInfoType: '1',
+        environment: 'PREPROD',
+      });
+  
+      console.log('2. SDK Response', response);
+    } catch (e) {
+      console.log('3. SDK Error', e);
+    }
+  };
+
   const handleSubmit = async () => {
     const {isValid} = validate();
     if (!isValid) return;
-
+  
+    // 1) Backend se encrypted Aadhaar payload tayar karwa lo
+    let aadhaar;
+    try {
+      aadhaar = await prepareAadhaarRequest({serviceType: 6});
+      console.log({aadhaar});
+    } catch (e) {
+      showToast({type: 'error', message: 'Aadhaar gateway error'});
+      return;
+    }
+  
+    // 2) Parichai SDK kholo. SDK fail ho ya key na de -> referenceKey null rakhenge.
+    let referenceKey = null;
+    try {
+      const sdkResponse = await startParichaiAuth({
+        sa: aadhaar.sa,
+        serviceType: String(aadhaar.serviceType),
+        encData: aadhaar.encData,
+        transactionId: aadhaar.transactionId,
+        disclosureInfoType: String(aadhaar.disclosureInfoType ?? 1),
+        environment: 'PREPROD',
+      });
+      console.log('Parichai SDK response', sdkResponse);
+  
+      referenceKey =
+        sdkResponse?.referenceKey ||
+        sdkResponse?.refKey ||
+        sdkResponse?.ref_key ||
+        sdkResponse?.referenceId ||
+        sdkResponse?.authRefKey ||
+        null;
+    } catch (e) {
+      console.log('Parichai SDK error', e);
+      // referenceKey remain null
+    }
+  
+    // 3) Beneficiary hamesha save karo (referenceKey null bhi ja sakta hai).
+    // console.log({values})
     const payload = {
       ...values,
-      schemeId: scheme?.id,
-      facilityId: facility?.id,
+      schemeId:        scheme?.id,
+      facilityId:      facility?.id,
+      facilityTypeId:  facility?.health_facility_type_id,   // <- naya
+      referenceKey,                                          // null when auth failed
+      transactionId:   aadhaar.transactionId,  
     };
-
+  
     const result = await dispatch(createBeneficiary(payload));
-
-    if (createBeneficiary.fulfilled.match(result)) {
-      const saved = result.payload;
-      dispatch(setDraft(saved));
-      showToast({
-        type: 'success',
-        message: t('FORM_SUBMITTED'),
-      });
-      navigation.navigate(ROUTES.FACE_AUTHENTICATION, {beneficiary: saved});
-    } else {
+    console.log({beneficiarycrate: result.payload});
+  
+    // 4) Save fail -> just show toast, stop.
+    if (!createBeneficiary.fulfilled.match(result)) {
       showToast({
         type: 'error',
         message: result.payload?.message || 'Failed to save',
       });
+      return;
     }
+  
+    const saved = result.payload;
+    dispatch(setDraft(saved));
+  
+    // 5) Save successful but auth ne reference key nahi di -> error toast, no navigation.
+    if (!referenceKey) {
+      showToast({
+        type: 'error',
+        message: 'Authentication did not return a reference key',
+      });
+      navigation.navigate(ROUTES.DASHBOARD);
+      return;
+    }
+  
+    // 6) Sab sahi -> success toast + list screen.
+    showToast({type: 'success', message: t('FORM_SUBMITTED')});
+    navigation.navigate(ROUTES.BENEFICIARY_LIST);
   };
-
+ 
   const schemeTitle = isHi ? scheme?.scheme_name : scheme?.scheme_name_e;
   const facilityTitle = facility?.facility_name;
 

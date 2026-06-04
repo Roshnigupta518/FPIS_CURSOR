@@ -50,4 +50,7 @@ export const ENDPOINTS = {
     BY_ID: id => `/beneficiaries/${id}`,
     FACE_AUTH: '/beneficiaries/face-auth',
   },
+  AADHAAR: {
+    PREPARE_REQUEST: '/AadhaarGateway/PrepareRequest?serviceType=',
+  },
 };
