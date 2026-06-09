@@ -134,24 +134,6 @@ const DashboardScreen = ({navigation}) => {
     },
   ];
 
-  const launchParichai = async () => {
-    try {
-      console.log('1. Before SDK call');
-  
-      const response = await startParichaiAuth({
-        sa: 'LITEMPLTD1',
-        serviceType: '1',
-        encData: 'encrypted_payload',
-        transactionId: 'LITEMPLTD1:20260601120000999',
-        disclosureInfoType: '1',
-        environment: 'PREPROD',
-      });
-  
-      console.log('2. SDK Response', response);
-    } catch (e) {
-      console.log('3. SDK Error', e);
-    }
-  };
 
   return (
     <View style={styles.flex}>
@@ -213,7 +195,6 @@ const DashboardScreen = ({navigation}) => {
           ))}
         </View>
 
-        <Button title='check sdk' onPress={()=>launchParichai()} />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>{t('MIN_HEALTH')}</Text>

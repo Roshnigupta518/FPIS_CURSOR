@@ -9,26 +9,26 @@
  *    field (mapped from snake_case → camelCase keys) AND as a toast.
  */
 
-import React, {useEffect, useMemo} from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  View,
+  View, Alert
 } from 'react-native';
-import {useTranslation} from 'react-i18next';
-import {useDispatch, useSelector} from 'react-redux';
+import { useTranslation } from 'react-i18next';
+import { useDispatch, useSelector } from 'react-redux';
 
 import CustomButton from '../../components/CustomButton';
 import CustomHeader from '../../components/CustomHeader';
 import DatePickerField from '../../components/DatePickerField';
 import MyInput from '../../components/MyInput';
-import {showToast} from '../../components/Toast';
+import { showToast } from '../../components/Toast';
 
-import {COLORS} from '../../constants/colors';
-import {ROUTES} from '../../constants/routes';
+import { COLORS } from '../../constants/colors';
+import { ROUTES } from '../../constants/routes';
 import {
   getFieldsForScheme,
   getSchemeKeyFromApi,
@@ -46,6 +46,7 @@ import {
 } from '../../styles/theme';
 import { startParichaiAuth } from '../../services/ParichaiAuthService';
 import { prepareAadhaarRequest } from '../../api/AadhaarGatewayService';
+import {CommonActions} from '@react-navigation/native';
 
 const SERVER_TO_CLIENT_KEY = {
   beneficiary_name: 'beneficiaryName',
@@ -59,14 +60,14 @@ const SERVER_TO_CLIENT_KEY = {
   facility_id: 'facilityId',
 };
 
-const BeneficiaryFormScreen = ({navigation}) => {
+const BeneficiaryFormScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const {t, i18n} = useTranslation();
+  const { t, i18n } = useTranslation();
   const isHi = i18n.language === 'hi';
 
   const facility = useSelector(s => s.facility.selected);
   const scheme = useSelector(s => s.scheme.selected);
-  const {submitting, fieldErrors: serverFieldErrors} = useSelector(
+  const { submitting, fieldErrors: serverFieldErrors } = useSelector(
     s => s.beneficiary,
   );
 
@@ -81,7 +82,7 @@ const BeneficiaryFormScreen = ({navigation}) => {
     [],
   );
 
-  const {values, errors, setValue, setError, validate} = useForm(
+  const { values, errors, setValue, setError, validate } = useForm(
     fields,
     initial,
   );
@@ -104,41 +105,23 @@ const BeneficiaryFormScreen = ({navigation}) => {
   }, [serverFieldErrors, setError]);
 
 
-  const launchParichai = async () => {
-    try {
-      console.log('1. Before SDK call');
-  
-      const response = await startParichaiAuth({
-        sa: 'LITEMPLTD1',
-        serviceType: '1',
-        encData: 'encrypted_payload',
-        transactionId: 'LITEMPLTD1:20260601120000999',
-        disclosureInfoType: '1',
-        environment: 'PREPROD',
-      });
-  
-      console.log('2. SDK Response', response);
-    } catch (e) {
-      console.log('3. SDK Error', e);
-    }
-  };
-
   const handleSubmit = async () => {
-    const {isValid} = validate();
+    const { isValid } = validate();
     if (!isValid) return;
-  
+
     // 1) Backend se encrypted Aadhaar payload tayar karwa lo
     let aadhaar;
     try {
-      aadhaar = await prepareAadhaarRequest({serviceType: 6});
-      console.log({aadhaar});
+      aadhaar = await prepareAadhaarRequest({ serviceType: 6 });
+      console.log({ aadhaar });
     } catch (e) {
-      showToast({type: 'error', message: 'Aadhaar gateway error'});
+      showToast({ type: 'error', message: 'Aadhaar gateway error' });
       return;
     }
-  
+
     // 2) Parichai SDK kholo. SDK fail ho ya key na de -> referenceKey null rakhenge.
     let referenceKey = null;
+    let authSuccess = false;
     try {
       const sdkResponse = await startParichaiAuth({
         sa: aadhaar.sa,
@@ -149,33 +132,58 @@ const BeneficiaryFormScreen = ({navigation}) => {
         environment: 'PREPROD',
       });
       console.log('Parichai SDK response', sdkResponse);
-  
-      referenceKey =
-        sdkResponse?.referenceKey ||
-        sdkResponse?.refKey ||
-        sdkResponse?.ref_key ||
-        sdkResponse?.referenceId ||
-        sdkResponse?.authRefKey ||
-        null;
+
+      // setTimeout(() => {
+      //   Alert.alert(
+      //     'SDK Response',
+      //     JSON.stringify(sdkResponse?.data || sdkResponse)
+      //   );
+      // }, 1000);
+
+      const gatewayResponse = sdkResponse?.data?.gatewayResponse;
+
+      if (gatewayResponse) {
+        const parsed =
+          typeof gatewayResponse === 'string'
+            ? JSON.parse(gatewayResponse)
+            : gatewayResponse;
+
+        console.log('Parsed Gateway Response', parsed);
+
+        authSuccess =
+          parsed?.ret === '1' &&
+          parsed?.uidToken &&
+          parsed?.uidToken.trim() !== '';
+
+        referenceKey =
+          parsed?.refKey !== undefined
+            ? String(parsed.refKey)
+            : null;
+      }
+
     } catch (e) {
       console.log('Parichai SDK error', e);
-      // referenceKey remain null
+      showToast({
+        type: 'error',
+        message: 'Parichai SDK error',
+      });
+
     }
-  
+
     // 3) Beneficiary hamesha save karo (referenceKey null bhi ja sakta hai).
     // console.log({values})
     const payload = {
       ...values,
-      schemeId:        scheme?.id,
-      facilityId:      facility?.id,
-      facilityTypeId:  facility?.health_facility_type_id,   // <- naya
+      schemeId: scheme?.id,
+      facilityId: facility?.id,
+      facilityTypeId: facility?.health_facility_type_id,   // <- naya
       referenceKey,                                          // null when auth failed
-      transactionId:   aadhaar.transactionId,  
+      transactionId: aadhaar.transactionId,
     };
-  
+
     const result = await dispatch(createBeneficiary(payload));
-    console.log({beneficiarycrate: result.payload});
-  
+    console.log({ beneficiarycrate: result.payload });
+
     // 4) Save fail -> just show toast, stop.
     if (!createBeneficiary.fulfilled.match(result)) {
       showToast({
@@ -184,25 +192,35 @@ const BeneficiaryFormScreen = ({navigation}) => {
       });
       return;
     }
-  
-    const saved = result.payload;
-    dispatch(setDraft(saved));
-  
-    // 5) Save successful but auth ne reference key nahi di -> error toast, no navigation.
-    if (!referenceKey) {
+
+    if (!authSuccess) {
       showToast({
         type: 'error',
-        message: 'Authentication did not return a reference key',
+        message: 'Aadhaar authentication failed',
       });
+
       navigation.navigate(ROUTES.DASHBOARD);
       return;
     }
-  
-    // 6) Sab sahi -> success toast + list screen.
-    showToast({type: 'success', message: t('FORM_SUBMITTED')});
-    navigation.navigate(ROUTES.BENEFICIARY_LIST);
+
+    const saved = result.payload;
+    dispatch(setDraft(saved));
+
+    // 5) Sab sahi -> success toast + list screen.
+    showToast({ type: 'success', message: t('FORM_SUBMITTED') });
+    // navigation.navigate(ROUTES.BENEFICIARY_LIST);
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 1,
+        routes: [
+          {name: ROUTES.DASHBOARD},
+          {name: ROUTES.BENEFICIARY_LIST},
+        ],
+      }),
+    );
+    
   };
- 
+
   const schemeTitle = isHi ? scheme?.scheme_name : scheme?.scheme_name_e;
   const facilityTitle = facility?.facility_name;
 
@@ -267,14 +285,14 @@ const BeneficiaryFormScreen = ({navigation}) => {
             );
           })}
 
-          <View style={{height: SPACING.lg}} />
+          <View style={{ height: SPACING.lg }} />
           <CustomButton
             title={t('CONTINUE')}
             onPress={handleSubmit}
             loading={submitting}
             rightIcon={<Text style={styles.btnArrow}>{'\u2192'}</Text>}
           />
-          <View style={{height: SPACING.xl}} />
+          <View style={{ height: SPACING.xl }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -282,8 +300,8 @@ const BeneficiaryFormScreen = ({navigation}) => {
 };
 
 const styles = StyleSheet.create({
-  flex: {flex: 1, backgroundColor: COLORS.background},
-  scroll: {padding: SPACING.lg, paddingBottom: SPACING.xxl},
+  flex: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { padding: SPACING.lg, paddingBottom: SPACING.xxl },
   banner: {
     backgroundColor: COLORS.primaryLight,
     borderLeftWidth: 4,
@@ -303,7 +321,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.small,
   },
-  btnArrow: {color: '#fff', fontSize: 18, fontWeight: '700'},
+  btnArrow: { color: '#fff', fontSize: 18, fontWeight: '700' },
 });
 
 export default BeneficiaryFormScreen;

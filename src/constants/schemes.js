@@ -284,7 +284,7 @@ const DOCTOR_FIELD = {
     labelHi: 'डॉक्टर का नाम',
     type: 'name',
     regex: 'NAME',
-    required: true,
+    required: false,
     maxLength: 60,
 };
 
