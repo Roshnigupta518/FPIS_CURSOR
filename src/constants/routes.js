@@ -13,4 +13,5 @@ export const ROUTES = {
   BENEFICIARY_LIST: 'BeneficiaryList',
   BENEFICIARY_DETAILS: 'BeneficiaryDetails',
   PROFILE: 'Profile',
+  MY_REPORT: 'MyReport',
 };

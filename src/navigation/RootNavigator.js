@@ -30,6 +30,7 @@ import FaceAuthenticationScreen from '../screens/FaceAuthentication';
 import BeneficiaryListScreen from '../screens/BeneficiaryList';
 import BeneficiaryDetailsScreen from '../screens/BeneficiaryDetails';
 import ProfileScreen from '../screens/Profile';
+import MyReportScreen from '../screens/MyReport';
 
 const Stack = createNativeStackNavigator();
 
@@ -94,6 +95,7 @@ const RootNavigator = () => {
               component={BeneficiaryDetailsScreen}
             />
             <Stack.Screen name={ROUTES.PROFILE} component={ProfileScreen} />
+            <Stack.Screen name={ROUTES.MY_REPORT} component={MyReportScreen} />
           </>
         )}
       </Stack.Navigator>

@@ -53,4 +53,8 @@ export const ENDPOINTS = {
   AADHAAR: {
     PREPARE_REQUEST: '/AadhaarGateway/PrepareRequest?serviceType=',
   },
+  REPORTS: {
+    MY_SUMMARY: '/reports/my-summary',
+    MY_SUMMARY_EXPORT: '/reports/my-summary/export',
+  },
 };

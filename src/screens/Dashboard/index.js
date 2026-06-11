@@ -84,6 +84,10 @@ const DashboardScreen = ({navigation}) => {
     navigation.navigate(ROUTES.PROFILE);
   }, [navigation]);
 
+  const goMyReport = useCallback(() => {
+    navigation.navigate(ROUTES.MY_REPORT);
+  }, [navigation]);
+
   const toggleLanguage = useCallback(() => {
     changeLanguage(i18n.language === 'hi' ? 'en' : 'hi');
   }, [i18n.language]);
@@ -115,6 +119,14 @@ const DashboardScreen = ({navigation}) => {
       color: COLORS.accent,
       bg: COLORS.accentLight,
       onPress: goList,
+    },
+    {
+      key: 'report',
+      title: t('MY_REPORT'),
+      icon: '\uD83D\uDCCA',
+      color: COLORS.warning,
+      bg: COLORS.warningLight,
+      onPress: goMyReport,
     },
     {
       key: 'profile',

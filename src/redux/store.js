@@ -13,6 +13,7 @@ import {showToast} from '../components/Toast';
 import authReducer, {forceLogout, logout} from './slices/authSlice';
 import beneficiaryReducer, {resetBeneficiary} from './slices/beneficiarySlice';
 import facilityReducer, {resetFacilities} from './slices/facilitySlice';
+import reportReducer, {resetReport} from './slices/reportSlice';
 import schemeReducer, {resetSchemes} from './slices/schemeSlice';
 import uiReducer from './slices/uiSlice';
 
@@ -22,6 +23,7 @@ export const store = configureStore({
     facility: facilityReducer,
     scheme: schemeReducer,
     beneficiary: beneficiaryReducer,
+    report: reportReducer,
     ui: uiReducer,
   },
   middleware: getDefault =>
@@ -53,5 +55,6 @@ setUnauthorizedHandler(() => {
   store.dispatch(resetBeneficiary());
   store.dispatch(resetFacilities());
   store.dispatch(resetSchemes());
+  store.dispatch(resetReport());
   showToast({type: 'error', message: 'Session expired. Please log in again.'});
 });
