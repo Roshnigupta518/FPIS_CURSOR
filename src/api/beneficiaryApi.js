@@ -28,7 +28,7 @@ export const listBeneficiariesApi = async (filters = {}) => {
   if (filters.dateFrom)   params.date_from   = filters.dateFrom;
   if (filters.dateTo)     params.date_to     = filters.dateTo;
 
-  console.log({params})
+  // console.log({params})
   const {data, meta} = await request({
     method: 'GET',
     url: ENDPOINTS.BENEFICIARIES.LIST,

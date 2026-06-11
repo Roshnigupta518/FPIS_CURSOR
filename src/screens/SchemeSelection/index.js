@@ -70,7 +70,7 @@ const SchemeSelectionScreen = ({navigation}) => {
         onBack={() => navigation.goBack()}
       />
 
-      <Container scroll={false} padded>
+      <Container scroll={false} padded edges={['left', 'right', 'bottom']}>
         <Text style={styles.description}>{t('SELECT_SCHEME_DESC')}</Text>
 
         {loading && items.length === 0 ? (

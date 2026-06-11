@@ -44,3 +44,7 @@ export const COLORS = {
   green: '#138A36',
   navy: '#08487E',
 };
+
+export const IMAGES = {
+  logo : require('../assests/images/logo.png')
+}

@@ -11,12 +11,12 @@
  */
 
 import React, {useEffect} from 'react';
-import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, StyleSheet, Text, View, Image} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {useDispatch, useSelector} from 'react-redux';
 
-import {COLORS} from '../constants/colors';
+import {COLORS, IMAGES} from '../constants/colors';
 import {ROUTES} from '../constants/routes';
 import {bootstrapAuth} from '../redux/slices/authSlice';
 import {FONT_SIZE, FONT_WEIGHT, SPACING} from '../styles/theme';
@@ -36,7 +36,8 @@ const Stack = createNativeStackNavigator();
 const Splash = () => (
   <View style={styles.splash}>
     <View style={styles.logo}>
-      <Text style={styles.logoText}>{'\u2695'}</Text>
+      {/* <Text style={styles.logoText}>{'\u2695'}</Text> */}
+      <Image source={IMAGES.logo} style={{width:100, height:100}} />
     </View>
     {/* <Text style={styles.appName}>परिवार कल्याण</Text> */}
     {/* <View style={styles.logoCircle}>

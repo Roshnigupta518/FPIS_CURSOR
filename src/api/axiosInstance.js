@@ -49,7 +49,7 @@ apiClient.interceptors.request.use(async config => {
   }
   if (__DEV__) {
     // eslint-disable-next-line no-console
-    console.log(`[API →] ${config.method?.toUpperCase()} ${config.url}`);
+    // console.log(`[API →] ${config.method?.toUpperCase()} ${config.url}`);
   }
   return config;
 });
@@ -59,7 +59,7 @@ apiClient.interceptors.response.use(
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.log(
-        `[API ←] ${response.config.method?.toUpperCase()} ${response.config.url} ${response.status}`,
+        // `[API ←] ${response.config.method?.toUpperCase()} ${response.config.url} ${response.status}`,
       );
     }
     return response;
@@ -104,7 +104,7 @@ apiClient.interceptors.response.use(
  */
 export const request = async (config, {raw = false} = {}) => {
   const response = await apiClient(config);
-  console.log({response: response.data})
+  // console.log({response: response.data})
   if (raw) return response;
   // Backend envelope: { success, message, data, meta }
   return {

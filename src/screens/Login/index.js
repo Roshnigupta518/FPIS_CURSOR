@@ -17,7 +17,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View, Image
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -44,6 +44,7 @@ import {
 } from '../../styles/theme';
 import {changeLanguage} from '../../utils/i18n';
 import {RegexType} from '../../utils/validation';
+import { IMAGES } from '../../constants/colors';
 
 // Demo mobile numbers — match the backend's `npm run db:seed` output.
 const DEMO_MOBILE = {
@@ -57,8 +58,8 @@ const LoginScreen = () => {
   const {t, i18n} = useTranslation();
   const {loading, error, loginType} = useSelector(s => s.auth);
 
-  const [userId, setUserId] = useState('DH_Bhopal');
-  const [password, setPassword] = useState('Welcome@1');
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
   const [touched, setTouched] = useState({mobile: false, password: false});
 
   useEffect(() => {
@@ -126,7 +127,8 @@ const LoginScreen = () => {
             </View>
 
             <View style={styles.logoCircle}>
-              <Text style={styles.logoText}>{'\u2695'}</Text>
+              {/* <Text style={styles.logoText}>{'\u2695'}</Text> */}
+              <Image source={IMAGES.logo} style={{width:100, height:100}} />
             </View>
             <Text style={styles.appTitle}>{t('APP_NAME')}</Text>
             <Text style={styles.appSubtitle}>{t('MIN_HEALTH')}</Text>
