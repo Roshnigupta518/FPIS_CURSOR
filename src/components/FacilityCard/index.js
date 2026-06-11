@@ -43,7 +43,7 @@ const FacilityCard = ({facility, selected, onPress, disabled = false}) => {
 
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={1}>
-            {isHi ? facility.nameHi : facility.facility_name}
+            {isHi ? facility.facility_name : facility.facility_name}
           </Text>
           <Text style={styles.subtitle} numberOfLines={2}>
             {isHi ? facility.district_name : facility.district_name}
