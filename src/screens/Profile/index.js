@@ -123,7 +123,7 @@ const ProfileScreen = ({navigation}) => {
             onPress={toggleLanguage}
           />
           <View style={styles.divider} />
-          <Row label={t('VERSION')} value="1.0.0" />
+          {/* <Row label={t('VERSION')} value="1.0.0" /> */}
         </View>
 
         <View style={{marginTop: SPACING.xl}}>

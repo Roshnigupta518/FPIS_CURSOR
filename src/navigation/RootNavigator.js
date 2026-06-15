@@ -22,6 +22,7 @@ import {bootstrapAuth} from '../redux/slices/authSlice';
 import {FONT_SIZE, FONT_WEIGHT, SPACING} from '../styles/theme';
 
 import LoginScreen from '../screens/Login';
+import ChangePasswordScreen from '../screens/ChangePassword';
 import DashboardScreen from '../screens/Dashboard';
 import FacilitySelectionScreen from '../screens/FacilitySelection';
 import SchemeSelectionScreen from '../screens/SchemeSelection';
@@ -66,7 +67,13 @@ const RootNavigator = () => {
       <Stack.Navigator
         screenOptions={{headerShown: false, animation: 'slide_from_right'}}>
         {!isAuthenticated ? (
-          <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
+          <>
+            <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
+            <Stack.Screen
+              name={ROUTES.CHANGE_PASSWORD}
+              component={ChangePasswordScreen}
+            />
+          </>
         ) : (
           <>
             <Stack.Screen name={ROUTES.DASHBOARD} component={DashboardScreen} />

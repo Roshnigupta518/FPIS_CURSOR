@@ -36,6 +36,9 @@ export const ENDPOINTS = {
     LOGIN: '/Auth/login',
     ME: '/auth/me',
     REGISTER: '/auth/register',
+    FORGOT_PASSWORD_REQUEST_OTP: '/auth/forgot-password/request-otp',
+    FORGOT_PASSWORD_VERIFY_OTP: '/auth/forgot-password/verify-otp',
+    FORGOT_PASSWORD_RESET: '/auth/forgot-password/reset',
   },
   FACILITIES: {
     LIST: '/facilities?userId=',

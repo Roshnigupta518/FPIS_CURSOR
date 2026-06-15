@@ -5,6 +5,7 @@
 
 export const ROUTES = {
   LOGIN: 'Login',
+  CHANGE_PASSWORD: 'ChangePassword',
   DASHBOARD: 'Dashboard',
   FACILITY_SELECTION: 'FacilitySelection',
   SCHEME_SELECTION: 'SchemeSelection',

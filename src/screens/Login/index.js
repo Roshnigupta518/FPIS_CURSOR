@@ -29,6 +29,7 @@ import {showToast} from '../../components/Toast';
 
 import {COLORS} from '../../constants/colors';
 import {LOGIN_TYPES} from '../../constants/facilities';
+import {ROUTES} from '../../constants/routes';
 import {LOGIN_TYPE_OPTIONS} from '../../constants/strings';
 import {
   clearAuthError,
@@ -53,13 +54,13 @@ const DEMO_MOBILE = {
   [LOGIN_TYPES.MEDICAL]: '9000000003',
 };
 
-const LoginScreen = () => {
+const LoginScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t, i18n} = useTranslation();
   const {loading, error, loginType} = useSelector(s => s.auth);
 
-  const [userId, setUserId] = useState('');
-  const [password, setPassword] = useState('');
+  const [userId, setUserId] = useState('DH_Bhopal');
+  const [password, setPassword] = useState('Welcome@1');
   const [touched, setTouched] = useState({mobile: false, password: false});
 
   useEffect(() => {
@@ -108,7 +109,7 @@ const LoginScreen = () => {
   }, [i18n.language]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -196,6 +197,13 @@ const LoginScreen = () => {
               disabled={!canSubmit}
               style={{marginTop: SPACING.sm}}
             />
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate(ROUTES.CHANGE_PASSWORD)}
+              style={styles.forgotRow}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+              <Text style={styles.forgotText}>{t('FORGOT_PASSWORD')}?</Text>
+            </TouchableOpacity>
 
             {/* <Text style={styles.hint}>
               Demo password: <Text style={styles.hintStrong}>password123</Text>
@@ -313,6 +321,15 @@ const styles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.semibold,
   },
   fieldIcon: {fontSize: 16},
+  forgotRow: {
+    alignItems: 'center',
+    paddingVertical: SPACING.md,
+  },
+  forgotText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.small,
+    fontWeight: FONT_WEIGHT.semibold,
+  },
   hint: {
     textAlign: 'center',
     color: COLORS.textMuted,

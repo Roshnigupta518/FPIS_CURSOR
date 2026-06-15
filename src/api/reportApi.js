@@ -31,7 +31,7 @@ import apiClient, {request} from './axiosInstance';
 import {ENDPOINTS, UPLOAD_TIMEOUT_MS} from '../constants/api';
 import {mapBeneficiary} from '../utils/mappers';
 
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                    */

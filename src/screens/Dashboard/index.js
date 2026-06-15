@@ -136,14 +136,14 @@ const DashboardScreen = ({navigation}) => {
       bg: COLORS.infoLight,
       onPress: goProfile,
     },
-    {
-      key: 'logout',
-      title: t('LOGOUT'),
-      icon: '🚪',
-      color: COLORS.error,
-      bg: COLORS.errorLight,
-      onPress: handleLogout,
-    },
+    // {
+    //   key: 'logout',
+    //   title: t('LOGOUT'),
+    //   icon: '🚪',
+    //   color: COLORS.error,
+    //   bg: COLORS.errorLight,
+    //   onPress: handleLogout,
+    // },
   ];
 
 
