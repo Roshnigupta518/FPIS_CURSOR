@@ -110,7 +110,13 @@
   "DOWNLOAD_EXCEL": "एक्सेल डाउनलोड",
   "DOWNLOAD_SUCCESS": "रिपोर्ट सफलतापूर्वक तैयार हुई",
   "DOWNLOAD_FAILED": "रिपोर्ट डाउनलोड विफल",
+  "DOWNLOAD_SAVED_TO": "सहेजा गया:",
+  "OPEN_FILE": "खोलें",
+  "CANNOT_OPEN_FILE": "इस फ़ाइल को खोलने के लिए कोई ऐप उपलब्ध नहीं है",
+  "STORAGE_PERMISSION_DENIED": "फ़ाइल सहेजने के लिए स्टोरेज अनुमति आवश्यक है",
   "NO_REPORT_FOUND": "इस अवधि में कोई रिपोर्ट नहीं",
   "NO_REPORT_DESC": "अवधि या योजना बदलकर पुनः प्रयास करें।",
-  "INVALID_DATE_RANGE": "कृपया वैध तिथि अवधि चुनें"
+  "INVALID_DATE_RANGE": "कृपया वैध तिथि अवधि चुनें",
+  "BENEFICIARIES": "लाभार्थी",
+  "SHOWING_OF": "{{shown}} में से {{total}} दिखा रहे हैं"
 }

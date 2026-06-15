@@ -56,5 +56,6 @@ export const ENDPOINTS = {
   REPORTS: {
     MY_SUMMARY: '/reports/my-summary',
     MY_SUMMARY_EXPORT: '/reports/my-summary/export',
+    MY_BENEFICIARIES: '/reports/my-beneficiaries',
   },
 };

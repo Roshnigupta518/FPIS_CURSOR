@@ -110,7 +110,13 @@
   "DOWNLOAD_EXCEL": "Download Excel",
   "DOWNLOAD_SUCCESS": "Report generated successfully",
   "DOWNLOAD_FAILED": "Failed to download report",
+  "DOWNLOAD_SAVED_TO": "Saved to",
+  "OPEN_FILE": "Open",
+  "CANNOT_OPEN_FILE": "No app available to open this file",
+  "STORAGE_PERMISSION_DENIED": "Storage permission required to save the file",
   "NO_REPORT_FOUND": "No reports found for this period",
   "NO_REPORT_DESC": "Try changing the period or scheme filter.",
-  "INVALID_DATE_RANGE": "Please choose a valid date range"
+  "INVALID_DATE_RANGE": "Please choose a valid date range",
+  "BENEFICIARIES": "Beneficiaries",
+  "SHOWING_OF": "Showing {{shown}} of {{total}}"
 }

@@ -10,9 +10,11 @@
  *  - 4 KPI cards (Total / Pending / Submitted / Failed) and a scheme
  *    breakdown table sorted by count desc.
  *  - Pull-to-refresh re-fetches the summary.
- *  - Top-right download button calls the report export endpoint, base64-
- *    encodes the .xlsx payload and hands it to the platform Share sheet
- *    as a data URL.
+ *  - Top-right download button calls the report export endpoint and
+ *    saves the .xlsx straight into the device's Downloads folder
+ *    (Android) or Documents directory (iOS) via react-native-blob-util.
+ *    A "saved" banner with an Open button appears so the user can hand
+ *    the file to Excel / Numbers / WPS without leaving the screen.
  *  - Empty state when total === 0; toast + retry on error.
  */
 
@@ -20,11 +22,9 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
   FlatList,
   Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -33,6 +33,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
+import BeneficiaryCard from '../../components/BeneficiaryCard';
 import CustomButton from '../../components/CustomButton';
 import CustomHeader from '../../components/CustomHeader';
 import DatePickerField from '../../components/DatePickerField';
@@ -42,11 +43,14 @@ import SectionCard from '../../components/SectionCard';
 import {showToast} from '../../components/Toast';
 
 import {COLORS} from '../../constants/colors';
+import {ROUTES} from '../../constants/routes';
 import {BENEFICIARY_STATUS} from '../../constants/schemes';
+import {openSavedFile, saveBase64ToDevice} from '../../utils/fileDownload';
 import {fetchFacilities} from '../../redux/slices/facilitySlice';
 import {fetchSchemes} from '../../redux/slices/schemeSlice';
 import {
   downloadMyReportExcel,
+  fetchMyReportBeneficiaries,
   fetchMyReportSummary,
   setReportFilters,
 } from '../../redux/slices/reportSlice';
@@ -122,13 +126,27 @@ const MyReportScreen = ({navigation}) => {
   const selectedFacility = useSelector(s => s.facility.selected);
   const facilityItems = useSelector(s => s.facility.items);
 
-  const {summary, filters, loading, refreshing, error, downloading} =
-    useSelector(s => s.report);
+  const {
+    summary,
+    filters,
+    loading,
+    refreshing,
+    error,
+    downloading,
+    items: listItems,
+    itemsTotal,
+    itemsLoading,
+  } = useSelector(s => s.report);
 
   const schemes = useSelector(s => s.scheme.items);
   const schemesLoading = useSelector(s => s.scheme.loading);
 
   const [schemeModalOpen, setSchemeModalOpen] = useState(false);
+  // Tracks the most recently saved file so we can show an "Open" button
+  // after a successful download. Cleared whenever the filters change
+  // (the saved file is for the previous query, so the button would be
+  // misleading once the user moves on).
+  const [lastSaved, setLastSaved] = useState(null);
 
   /* --------------------------- facility type id ---------------------------- */
   // The existing scheme API expects a facility type id. We pick it up from
@@ -178,6 +196,9 @@ const MyReportScreen = ({navigation}) => {
       return;
     }
     dispatch(fetchMyReportSummary({reset: false}));
+    dispatch(fetchMyReportBeneficiaries({reset: false}));
+    // The previous saved file no longer matches the new query.
+    setLastSaved(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.period, filters.from, filters.to, filters.schemeId]);
 
@@ -234,11 +255,20 @@ const MyReportScreen = ({navigation}) => {
 
   const handleRefresh = useCallback(() => {
     dispatch(fetchMyReportSummary({reset: true}));
+    dispatch(fetchMyReportBeneficiaries({reset: true}));
   }, [dispatch]);
 
   const handleRetry = useCallback(() => {
     dispatch(fetchMyReportSummary({reset: false}));
+    dispatch(fetchMyReportBeneficiaries({reset: false}));
   }, [dispatch]);
+
+  const handleOpenBeneficiary = useCallback(
+    item => {
+      navigation.navigate(ROUTES.BENEFICIARY_DETAILS, {id: item.id});
+    },
+    [navigation],
+  );
 
   const handleDownload = useCallback(async () => {
     if (downloading) {
@@ -246,37 +276,46 @@ const MyReportScreen = ({navigation}) => {
     }
     try {
       const action = await dispatch(downloadMyReportExcel());
-      if (downloadMyReportExcel.fulfilled.match(action)) {
-        const {base64, fileName, mimeType} = action.payload;
-        await Share.share(
-          {
-            // iOS picks up `url` for the share sheet; Android falls back
-            // to message/title.
-            url: `data:${mimeType};base64,${base64}`,
-            title: fileName,
-            message:
-              Platform.OS === 'android'
-                ? `${t('DOWNLOAD_SUCCESS')}: ${fileName}`
-                : undefined,
-          },
-          {
-            dialogTitle: fileName,
-            subject: fileName,
-          },
-        );
-        showToast({type: 'success', message: t('DOWNLOAD_SUCCESS')});
-      } else {
+      if (!downloadMyReportExcel.fulfilled.match(action)) {
         const message =
           (action.payload && String(action.payload)) || t('DOWNLOAD_FAILED');
         showToast({type: 'error', message});
+        return;
       }
+      const {base64, fileName, mimeType} = action.payload;
+      // Persist to the device's Downloads (Android) or Documents (iOS).
+      // Bubble permission errors up as friendly toasts.
+      const saved = await saveBase64ToDevice({base64, fileName, mimeType});
+      setLastSaved({...saved, fileName, mimeType});
+      showToast({
+        type: 'success',
+        message: `${t('DOWNLOAD_SAVED_TO')} ${saved.displayLocation}`,
+      });
+    } catch (e) {
+      const message =
+        e?.code === 'PERMISSION_DENIED'
+          ? t('STORAGE_PERMISSION_DENIED')
+          : e?.message || t('DOWNLOAD_FAILED');
+      showToast({type: 'error', message});
+    }
+  }, [dispatch, downloading, t]);
+
+  const handleOpenLastSaved = useCallback(async () => {
+    if (!lastSaved) {
+      return;
+    }
+    try {
+      await openSavedFile({
+        path: lastSaved.path,
+        mimeType: lastSaved.mimeType,
+      });
     } catch (e) {
       showToast({
         type: 'error',
-        message: e?.message || t('DOWNLOAD_FAILED'),
+        message: e?.message || t('CANNOT_OPEN_FILE'),
       });
     }
-  }, [dispatch, downloading, t]);
+  }, [lastSaved, t]);
 
   /* -------------------------------- derived -------------------------------- */
 
@@ -408,6 +447,27 @@ const MyReportScreen = ({navigation}) => {
           <Text style={styles.dropdownIcon}>{'\u25BE'}</Text>
         </TouchableOpacity>
 
+        {/* --------- Last saved banner --------- */}
+        {lastSaved ? (
+          <View style={styles.savedBanner}>
+            <View style={styles.savedBannerInfo}>
+              <Text style={styles.savedBannerTitle} numberOfLines={1}>
+                {'\u2705 '}
+                {lastSaved.fileName}
+              </Text>
+              <Text style={styles.savedBannerSubtitle} numberOfLines={1}>
+                {t('DOWNLOAD_SAVED_TO')} {lastSaved.displayLocation}
+              </Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleOpenLastSaved}
+              style={styles.savedBannerBtn}>
+              <Text style={styles.savedBannerBtnText}>{t('OPEN_FILE')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {/* --------- Body --------- */}
         {showFirstLoad ? (
           <Loader text={t('LOADING')} />
@@ -432,7 +492,7 @@ const MyReportScreen = ({navigation}) => {
         ) : summary ? (
           <>
             {/* KPI grid */}
-            <View style={styles.kpiGrid}>
+            {/* <View style={styles.kpiGrid}>
               {KPI_DEFS.map(def => (
                 <View key={def.key} style={[styles.kpiCard, SHADOWS.card]}>
                   <View style={[styles.kpiIcon, {backgroundColor: def.bg}]}>
@@ -444,7 +504,7 @@ const MyReportScreen = ({navigation}) => {
                   <Text style={styles.kpiLabel}>{t(def.labelKey)}</Text>
                 </View>
               ))}
-            </View>
+            </View> */}
 
             {/* Scheme breakdown */}
             <SectionCard
@@ -481,6 +541,33 @@ const MyReportScreen = ({navigation}) => {
                 ))
               )}
             </SectionCard>
+
+            {/* Beneficiary list */}
+            {total > 0 ? (
+              <View style={styles.listSection}>
+                <View style={styles.listHeader}>
+                  <Text style={styles.listTitle}>{t('BENEFICIARIES')}</Text>
+                  <Text style={styles.listSubtitle}>
+                    {t('SHOWING_OF', {
+                      shown: listItems.length,
+                      total: itemsTotal || total,
+                    })}
+                  </Text>
+                </View>
+
+                {itemsLoading && listItems.length === 0 ? (
+                  <Loader text={t('LOADING')} />
+                ) : (
+                  listItems.map(item => (
+                    <BeneficiaryCard
+                      key={String(item.id)}
+                      item={item}
+                      onPress={handleOpenBeneficiary}
+                    />
+                  ))
+                )}
+              </View>
+            ) : null}
           </>
         ) : null}
       </ScrollView>
@@ -654,6 +741,44 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 
+  /* Last-saved banner */
+  savedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.successLight,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  savedBannerInfo: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+  },
+  savedBannerTitle: {
+    fontSize: FONT_SIZE.body,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textPrimary,
+  },
+  savedBannerSubtitle: {
+    fontSize: FONT_SIZE.caption,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  savedBannerBtn: {
+    backgroundColor: COLORS.success,
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.sm,
+  },
+  savedBannerBtnText: {
+    color: COLORS.white || '#fff',
+    fontSize: FONT_SIZE.caption,
+    fontWeight: FONT_WEIGHT.bold,
+  },
+
   /* KPI grid */
   kpiGrid: {
     flexDirection: 'row',
@@ -723,6 +848,26 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: 0.6,
   },
+  /* beneficiary list section */
+  listSection: {
+    marginTop: SPACING.md,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  listTitle: {
+    fontSize: FONT_SIZE.title,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: COLORS.textPrimary,
+  },
+  listSubtitle: {
+    fontSize: FONT_SIZE.caption,
+    color: COLORS.textMuted,
+  },
+
   tableCount: {
     fontSize: FONT_SIZE.title,
     fontWeight: FONT_WEIGHT.bold,

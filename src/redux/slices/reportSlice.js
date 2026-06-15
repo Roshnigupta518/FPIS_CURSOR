@@ -3,13 +3,16 @@
  *
  *  Async thunks
  *  ────────────
- *    fetchMyReportSummary({reset})    — pulls /reports/my-summary using
- *                                        the current filters
- *    downloadMyReportExcel()          — pulls the .xlsx binary using the
- *                                        current filters; returns the
- *                                        base64 + filename so the screen
- *                                        layer can hand it to the Share
- *                                        sheet
+ *    fetchMyReportSummary({reset})         — pulls /reports/my-summary
+ *                                             using the current filters
+ *    fetchMyReportBeneficiaries({reset})   — pulls the beneficiary rows
+ *                                             behind the summary (date
+ *                                             range + scheme filter)
+ *    downloadMyReportExcel()               — pulls the .xlsx binary using
+ *                                             the current filters; returns
+ *                                             the base64 + filename so
+ *                                             the screen layer can hand
+ *                                             it to the Share sheet
  *
  *  State shape
  *  ───────────
@@ -19,8 +22,11 @@
  *        byStatus: { PENDING_AUTH, AUTH_SUCCESS, AUTH_FAILED, SUBMITTED },
  *        byScheme: [{ id, code, name, count }, ...]
  *      } | null,
+ *      items: Beneficiary[],          // list rendered below the breakdown
+ *      itemsTotal,                    // server-reported total (paged)
  *      filters: { period, from, to, schemeId },
  *      loading, refreshing, error,
+ *      itemsLoading, itemsError,
  *      downloading, downloadError,
  *    }
  */
@@ -29,6 +35,7 @@ import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
 
 import {
   downloadMyReportExcelApi,
+  getMyReportBeneficiariesApi,
   getMyReportSummaryApi,
 } from '../../api/reportApi';
 
@@ -45,6 +52,19 @@ export const fetchMyReportSummary = createAsyncThunk(
       return {data, reset};
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load report');
+    }
+  },
+);
+
+export const fetchMyReportBeneficiaries = createAsyncThunk(
+  'report/fetchMyBeneficiaries',
+  async ({reset = false} = {}, {getState, rejectWithValue}) => {
+    try {
+      const {filters} = getState().report;
+      const data = await getMyReportBeneficiariesApi(filters);
+      return {data, reset};
+    } catch (err) {
+      return rejectWithValue(err?.message || 'Failed to load beneficiary list');
     }
   },
 );
@@ -68,6 +88,9 @@ export const downloadMyReportExcel = createAsyncThunk(
 const initialState = {
   summary: null,
 
+  items: [],
+  itemsTotal: 0,
+
   filters: {
     period: 'today', // today | week | month | all | custom
     from: null, // ISO string when period === 'custom'
@@ -78,6 +101,9 @@ const initialState = {
   loading: false,
   refreshing: false,
   error: null,
+
+  itemsLoading: false,
+  itemsError: null,
 
   downloading: false,
   downloadError: null,
@@ -118,6 +144,21 @@ const reportSlice = createSlice({
         state.loading = false;
         state.refreshing = false;
         state.error = action.payload || 'Failed to load report';
+      });
+
+    builder
+      .addCase(fetchMyReportBeneficiaries.pending, state => {
+        state.itemsLoading = true;
+        state.itemsError = null;
+      })
+      .addCase(fetchMyReportBeneficiaries.fulfilled, (state, action) => {
+        state.itemsLoading = false;
+        state.items = action.payload.data?.items || [];
+        state.itemsTotal = action.payload.data?.total ?? state.items.length;
+      })
+      .addCase(fetchMyReportBeneficiaries.rejected, (state, action) => {
+        state.itemsLoading = false;
+        state.itemsError = action.payload || 'Failed to load list';
       });
 
     builder
