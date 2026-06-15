@@ -194,7 +194,7 @@ const BASE_FIELDS = [
   },
   {
     key: 'guardianName',
-    label: "Father / Husband's Name",
+    label: "Father / Spouse Name",
     labelHi: 'पिता / पति का नाम',
     type: 'name',
     regex: 'NAME',
