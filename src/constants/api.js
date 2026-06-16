@@ -50,7 +50,7 @@ export const ENDPOINTS = {
   },
   BENEFICIARIES: {
     LIST: '/beneficiaries',
-    BY_ID: id => `/beneficiaries/${id}`,
+    BY_ID : id => `/beneficiaries/by-id?BeneficiaryID=${id}`,
     FACE_AUTH: '/beneficiaries/face-auth',
   },
   AADHAAR: {

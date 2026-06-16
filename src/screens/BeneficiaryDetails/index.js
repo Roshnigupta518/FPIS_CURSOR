@@ -8,13 +8,7 @@
  */
 
 import React, {useCallback, useEffect, useMemo} from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
@@ -48,16 +42,25 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
   const id = route?.params?.id;
 
   const {current, loadingCurrent, deletingId} = useSelector(s => s.beneficiary);
+  // The id on `route.params` may arrive as a string (e.g. from My Report,
+  // whose API returns "Id": "62"), while the by-id endpoint and the list
+  // cache both store id as a number. Compare via String() so we always
+  // match the freshest fetched record instead of falling through to the
+  // empty-state fallback.
+  const idKey = String(id ?? '');
   const itemFromList = useSelector(s =>
-    s.beneficiary.items.find(i => i.id === id),
+    s.beneficiary.items.find(i => String(i.id) === idKey),
   );
 
   // Use the freshest data: server fetch > list cache.
-  const item = current?.id === id ? current : itemFromList || null;
+  const item =
+    current && String(current.id) === idKey ? current : itemFromList || null;
   const isDeleting = deletingId === id;
 
   useEffect(() => {
-    if (id) dispatch(fetchBeneficiaryById(id));
+    if (id) {
+      dispatch(fetchBeneficiaryById(id));
+    }
   }, [dispatch, id]);
 
   const canEdit = useMemo(
@@ -73,19 +76,25 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
   );
 
   const handleEdit = useCallback(() => {
-    if (!item) return;
+    if (!item) {
+      return;
+    }
     dispatch(setDraft(item));
     navigation.navigate(ROUTES.BENEFICIARY_FORM, {beneficiary: item});
   }, [dispatch, item, navigation]);
 
   const handleAuth = useCallback(() => {
-    if (!item) return;
+    if (!item) {
+      return;
+    }
     dispatch(setDraft(item));
     navigation.navigate(ROUTES.FACE_AUTHENTICATION, {beneficiary: item});
   }, [dispatch, item, navigation]);
 
   const handleDelete = useCallback(() => {
-    if (!item) return;
+    if (!item) {
+      return;
+    }
     Alert.alert(
       'Delete Beneficiary',
       `Delete ${item.beneficiaryName}? This cannot be undone.`,
@@ -100,7 +109,10 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
               showToast({type: 'success', message: 'Beneficiary deleted'});
               navigation.goBack();
             } else {
-              showToast({type: 'error', message: result.payload || 'Failed to delete'});
+              showToast({
+                type: 'error',
+                message: result.payload || 'Failed to delete',
+              });
             }
           },
         },
@@ -166,7 +178,10 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
         </View>
 
         <SectionCard title={t('PERSONAL_DETAILS')} icon="👤">
-          <DetailRow label={t('BENEFICIARY_NAME')} value={item.beneficiaryName} />
+          <DetailRow
+            label={t('BENEFICIARY_NAME')}
+            value={item.beneficiaryName}
+          />
           <DetailRow label={t('GUARDIAN_NAME')} value={item.guardianName} />
           <DetailRow label={t('AGE')} value={item.age} />
           <DetailRow label={t('SAMAGRA_ID')} value={item.samagraId} />
@@ -174,7 +189,7 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
           <DetailRow label={t('ADDRESS')} value={item.address} />
         </SectionCard>
 
-        <SectionCard title={t('SCHEME_DETAILS')}  icon="📋">
+        <SectionCard title={t('SCHEME_DETAILS')} icon="📋">
           <DetailRow label={t('SCHEME')} value={item.schemeName} />
           {item.claimId ? (
             <DetailRow label={t('CLAIM_ID')} value={item.claimId} />
@@ -191,9 +206,9 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
               value={formatDate(item.followUpDate)}
             />
           ) : null}
-          {item.doctorName &&
-          <DetailRow label={t('DOCTOR_NAME')} value={item.doctorName} />
-          }
+          {item.doctorName && (
+            <DetailRow label={t('DOCTOR_NAME')} value={item.doctorName} />
+          )}
         </SectionCard>
 
         <SectionCard title={t('FACILITY_DETAILS')} icon="🏥">

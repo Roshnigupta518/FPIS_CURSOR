@@ -27,8 +27,8 @@
  *  can all be exercised without a server).
  */
 
-import apiClient, {request} from './axiosInstance';
-import {ENDPOINTS, UPLOAD_TIMEOUT_MS} from '../constants/api';
+import apiClient from './axiosInstance';
+import {ENDPOINTS} from '../constants/api';
 import {mapBeneficiary} from '../utils/mappers';
 
 const MOCK_MODE = false;
@@ -52,15 +52,50 @@ const toYmd = v => {
   return `${y}-${m}-${day}`;
 };
 
-const buildSummaryParams = ({period, from, to, schemeId} = {}) => {
+/* -------------------------------------------------------------------------- */
+/*  Period → backend `flag`                                                    */
+/* -------------------------------------------------------------------------- */
+//
+// The deployed backend (FPIS_API_APP) takes an integer `flag` for the
+// time window instead of a string period. Mapping confirmed by backend:
+//
+//   1 → today
+//   2 → last 7 days (this week)
+//   3 → last 30 days (this month)
+//   4 → custom (sends fromDate / toDate as YYYY-MM-DD)
+//   5 → all
+//
+const PERIOD_TO_FLAG = {
+  today: 1,
+  week: 2,
+  month: 3,
+  custom: 4,
+  all: 5,
+};
+
+/**
+ * Builds the query string the deployed API expects:
+ *
+ *   /api/reports/my-summary?flag=2&userId=42
+ *   /api/reports/my-summary?flag=5&userId=42&fromDate=2025-01-01&toDate=2025-01-31
+ *   /api/reports/my-summary?flag=2&userId=42&schemeId=3
+ *
+ * `fromDate` / `toDate` are only sent when period === 'custom' (Swagger
+ * marks them optional); both go in the canonical `YYYY-MM-DD` shape so
+ * SQL Server parses them deterministically regardless of locale.
+ */
+const buildSummaryParams = ({period, from, to, schemeId, userId} = {}) => {
   const params = {};
-  params.period = period || 'today';
-  if (params.period === 'custom') {
+  params.flag = PERIOD_TO_FLAG[period || 'today'] ?? PERIOD_TO_FLAG.today;
+  if (userId != null && userId !== '') {
+    params.userId = Number(userId);
+  }
+  if ((period || 'today') === 'custom') {
     if (from) {
-      params.from = toYmd(from);
+      params.fromDate = toYmd(from);
     }
     if (to) {
-      params.to = toYmd(to);
+      params.toDate = toYmd(to);
     }
   }
   if (schemeId != null && schemeId !== '' && schemeId !== 'all') {
@@ -80,34 +115,118 @@ export const getMyReportSummaryApi = async (filters = {}) => {
     return buildMockSummary(filters);
   }
 
-  const {data, meta} = await request({
+  const response = await apiClient({
     method: 'GET',
     url: ENDPOINTS.REPORTS.MY_SUMMARY,
     params: buildSummaryParams(filters),
   });
 
-  // Backend puts the resolved window in `meta`; the counts in `data`.
+  return normalizeSummaryResponse(response?.data, filters);
+};
+
+/**
+ * The deployed backend returns the scheme breakdown directly — it can
+ * be a bare array of `{id, code, name, count}` rows, a `{DataTabN: [...] }`
+ * wrapper (legacy .NET WebMethod style), or our own `{success, data, meta}`
+ * envelope. Handle all three so a server-side change of shape doesn't
+ * silently blank out the screen.
+ */
+const normalizeSummaryResponse = (raw, filters = {}) => {
+  let schemeRows = [];
+  let statusRows = null;
+  let totalFromApi = null;
+
+  if (Array.isArray(raw)) {
+    schemeRows = raw;
+  } else if (raw && typeof raw === 'object') {
+    if (Array.isArray(raw.data)) {
+      // `{ success, data, meta }` envelope.
+      schemeRows = raw.data;
+    } else if (raw.data && Array.isArray(raw.data.byScheme)) {
+      // `{ data: { byScheme, byStatus, total } }` envelope.
+      schemeRows = raw.data.byScheme;
+      statusRows = raw.data.byStatus || null;
+      if (typeof raw.data.total === 'number') {
+        totalFromApi = raw.data.total;
+      }
+    } else if (Array.isArray(raw.DataTab1) || Array.isArray(raw.dataTab1)) {
+      // .NET-style multi-recordset response.
+      schemeRows = raw.DataTab1 || raw.dataTab1;
+      const tab2 = raw.DataTab2 || raw.dataTab2;
+      if (Array.isArray(tab2)) {
+        statusRows = tab2;
+      }
+    } else if (Array.isArray(raw.byScheme)) {
+      schemeRows = raw.byScheme;
+      statusRows = raw.byStatus || null;
+      if (typeof raw.total === 'number') {
+        totalFromApi = raw.total;
+      }
+    }
+  }
+
+  const byScheme = (Array.isArray(schemeRows) ? schemeRows : []).map(s => ({
+    id: s.id ?? s.scheme_id ?? s.schemeId ?? null,
+    code: s.code ?? s.scheme_code ?? s.schemeCode ?? '',
+    name: s.name ?? s.scheme_name ?? s.schemeName ?? '',
+    count: Number(s.count ?? s.total ?? 0),
+  }));
+
+  const computedTotal = byScheme.reduce((sum, r) => sum + (r.count || 0), 0);
+
+  // byStatus when the backend doesn't ship it: surface zeroes so the
+  // commented-out KPI grid (or anything else that reads byStatus) keeps
+  // the keys it expects.
+  const byStatus = pickStatusBreakdown(statusRows);
+
   return {
-    period: meta?.period || filters.period || 'today',
-    from: meta?.from || null,
-    to: meta?.to || null,
-    schemeId: meta?.schemeId ?? null,
-    total: Number(data?.total || 0),
-    byStatus: {
-      PENDING_AUTH: Number(data?.byStatus?.PENDING_AUTH || 0),
-      AUTH_SUCCESS: Number(data?.byStatus?.AUTH_SUCCESS || 0),
-      AUTH_FAILED: Number(data?.byStatus?.AUTH_FAILED || 0),
-      SUBMITTED: Number(data?.byStatus?.SUBMITTED || 0),
-    },
-    byScheme: Array.isArray(data?.byScheme)
-      ? data.byScheme.map(s => ({
-          id: s.id,
-          code: s.code,
-          name: s.name,
-          count: Number(s.count || 0),
-        }))
-      : [],
+    period: filters.period || 'today',
+    from: filters.from ? toYmd(filters.from) : null,
+    to: filters.to ? toYmd(filters.to) : null,
+    schemeId: filters.schemeId ?? null,
+    total: totalFromApi ?? computedTotal,
+    byStatus,
+    byScheme,
   };
+};
+
+const STATUS_KEYS = [
+  'PENDING_AUTH',
+  'AUTH_SUCCESS',
+  'AUTH_FAILED',
+  'SUBMITTED',
+];
+
+const pickStatusBreakdown = rows => {
+  const empty = {
+    PENDING_AUTH: 0,
+    AUTH_SUCCESS: 0,
+    AUTH_FAILED: 0,
+    SUBMITTED: 0,
+  };
+  if (!rows) {
+    return empty;
+  }
+  // Backend may send either a keyed object or an array of `{status, count}`.
+  if (Array.isArray(rows)) {
+    return rows.reduce(
+      (acc, r) => {
+        const key = String(r.status || r.code || r.name || '').toUpperCase();
+        if (STATUS_KEYS.includes(key)) {
+          acc[key] = Number(r.count || 0);
+        }
+        return acc;
+      },
+      {...empty},
+    );
+  }
+  if (typeof rows === 'object') {
+    return STATUS_KEYS.reduce((acc, key) => {
+      acc[key] = Number(rows[key] || 0);
+      return acc;
+    }, {});
+  }
+  return empty;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -118,9 +237,10 @@ export const getMyReportSummaryApi = async (filters = {}) => {
  * Returns the user's own beneficiaries that match the current report
  * filters. In MOCK_MODE we synthesize a deterministic list whose scheme
  * + status distribution mirrors `buildMockSummary` so the screen looks
- * coherent. In real mode we hit /reports/my-beneficiaries which is
- * scoped server-side to `created_by = req.user.id` and accepts the same
- * `period`/`from`/`to`/`schemeId` query as the summary endpoint.
+ * coherent. In real mode we hit `/reports/my-beneficiaries` with the
+ * same `flag` / `userId` / `fromDate` / `toDate` / `schemeId` query
+ * the summary endpoint takes — the backend scopes the rows to
+ * `created_by = userId` server-side.
  */
 export const getMyReportBeneficiariesApi = async (filters = {}) => {
   if (MOCK_MODE) {
@@ -134,19 +254,106 @@ export const getMyReportBeneficiariesApi = async (filters = {}) => {
   }
   params.limit = filters.limit || 50;
 
-  const response = await request({
+  const response = await apiClient({
     method: 'GET',
     url: ENDPOINTS.REPORTS.MY_BENEFICIARIES,
     params,
   });
 
-  // request() unwraps the envelope to { data, meta }; the rows come
-  // back snake_case from the backend, so push them through the shared
-  // mapper for the same camelCase shape BeneficiaryCard expects.
-  const rows = Array.isArray(response.data) ? response.data : [];
+  // The deployed API may return either a bare array, an envelope, or
+  // a `{DataTab1: [...]}` wrapper — match the summary parser's tolerance.
+  const raw = response?.data;
+  let rows = [];
+  let total = null;
+  if (Array.isArray(raw)) {
+    rows = raw;
+  } else if (raw && typeof raw === 'object') {
+    if (Array.isArray(raw.data)) {
+      rows = raw.data;
+      total = raw.meta?.total ?? null;
+    } else if (Array.isArray(raw.DataTab1) || Array.isArray(raw.dataTab1)) {
+      rows = raw.DataTab1 || raw.dataTab1;
+      total = raw.totalRecords ?? raw.total ?? null;
+    } else if (Array.isArray(raw.items)) {
+      rows = raw.items;
+      total = raw.total ?? null;
+    }
+  }
+
+  // Normalize key-casing before the shared mapBeneficiary mapper picks
+  // them up — the deployed backend currently returns a *minimal* row
+  // shape with PascalCase `Id` (rest of the fields stay lowercase /
+  // snake_case). Without this, every card would show `ID: undefined`
+  // and tapping a card would navigate to BeneficiaryDetails(undefined).
   return {
-    items: rows.map(mapBeneficiary),
-    total: response.meta?.total ?? rows.length,
+    items: rows.map(r => mapBeneficiary(normalizeReportRow(r))),
+    total: total ?? rows.length,
+  };
+};
+
+/**
+ * Aliases every key-casing variant the My Report endpoint may emit so a
+ * single call to `mapBeneficiary` can handle them. The deployed backend
+ * mixes three styles in one row — PascalCase (`Id`, `Age`, `Mobile`),
+ * compound-PascalCase (`FatherHusbandName`, `SamagraID`, `Scheme_Code`),
+ * and plain snake_case (`beneficiary_name`, `scheme_name`) — so we
+ * remap all of them here.
+ *
+ * Critically we also coerce `id` to a Number: the list endpoint returns
+ * it as a string ("62"), but the by-id endpoint returns a number (62),
+ * and `BeneficiaryDetails` matches them with `===`. Without this fix
+ * the strict equality fails and the details screen falls back to the
+ * (empty) list cache and renders "No data".
+ */
+const normalizeReportRow = row => {
+  if (!row || typeof row !== 'object') {
+    return row;
+  }
+  const rawId = row.id ?? row.Id ?? row.ID ?? null;
+  const parsedId =
+    rawId == null || rawId === ''
+      ? null
+      : Number.isFinite(Number(rawId))
+      ? Number(rawId)
+      : rawId;
+
+  return {
+    ...row,
+    id: parsedId,
+    beneficiary_name:
+      row.beneficiary_name ?? row.beneficiaryName ?? row.Name ?? row.name ?? '',
+    age: row.age ?? row.Age ?? '',
+    father_husband_name:
+      row.father_husband_name ??
+      row.FatherHusbandName ??
+      row.guardianName ??
+      row.fatherHusbandName ??
+      '',
+    samagra_id:
+      row.samagra_id ?? row.SamagraID ?? row.SamagraId ?? row.samagraId ?? '',
+    mobile: row.mobile ?? row.Mobile ?? '',
+    address: row.address ?? row.Address ?? '',
+    scheme_id: row.scheme_id ?? row.SchemeId ?? row.schemeId ?? null,
+    scheme_name: row.scheme_name ?? row.schemeName ?? '',
+    scheme_code:
+      row.scheme_code ??
+      row.Scheme_Code ??
+      row.SchemeCode ??
+      row.schemeCode ??
+      '',
+    facility_id: row.facility_id ?? row.FacilityId ?? row.facilityId ?? null,
+    facility_name: row.facility_name ?? row.facilityName ?? '',
+    facility_type: row.facility_type ?? row.facilityType ?? '',
+    doctor_name: row.doctor_name ?? row.DoctorName ?? row.doctorName ?? null,
+    procedure_date: row.procedure_date ?? row.procedureDate ?? null,
+    follow_up_date: row.follow_up_date ?? row.followUpDate ?? null,
+    claim_id: row.claim_id ?? row.ClaimId ?? row.claimId ?? '',
+    auth_status: row.auth_status ?? row.authStatus ?? row.status ?? '',
+    face_auth_image:
+      row.face_auth_image ?? row.FaceAuthImage ?? row.faceAuthImage ?? null,
+    created_by: row.created_by ?? row.CreatedBy ?? row.createdBy ?? null,
+    created_at: row.created_at ?? row.createdAt ?? null,
+    updated_at: row.updated_at ?? row.updatedAt ?? null,
   };
 };
 
@@ -157,10 +364,20 @@ export const getMyReportBeneficiariesApi = async (filters = {}) => {
 /**
  * Downloads the Excel report as a base64 string + suggested filename.
  *
- * We pull the binary payload as an ArrayBuffer through the same axios
- * client (so the JWT interceptor still applies) and encode it client-side
- * — this avoids needing react-native-fs / blob plugins. The screen layer
- * then hands the base64 to the platform Share sheet as a data URL.
+ * We build the file *client-side* from the same beneficiary rows the
+ * list endpoint already returns. That deliberately sidesteps the
+ * binary `/reports/my-summary/export` endpoint, which isn't always
+ * reachable on every backend deployment — the user-facing download
+ * keeps working as long as `/reports/my-beneficiaries` does.
+ *
+ * We emit CSV with a UTF-8 BOM rather than a real .xlsx because:
+ *   • Excel / Numbers / Google Sheets all open it natively
+ *   • Hindi text round-trips correctly thanks to the BOM
+ *   • No native xlsx writer needs to ship in the JS bundle
+ *
+ * The base64 + filename + mime type returned here are consumed by
+ * `saveBase64ToDevice` on the screen, which lands the file in the
+ * Android Downloads folder (or iOS Documents, exposed via Files app).
  */
 export const downloadMyReportExcelApi = async (filters = {}) => {
   if (MOCK_MODE) {
@@ -168,30 +385,143 @@ export const downloadMyReportExcelApi = async (filters = {}) => {
     return buildMockExcelDownload(filters);
   }
 
-  const response = await apiClient({
-    method: 'GET',
-    url: ENDPOINTS.REPORTS.MY_SUMMARY_EXPORT,
-    params: buildSummaryParams(filters),
-    responseType: 'arraybuffer',
-    timeout: UPLOAD_TIMEOUT_MS,
-    headers: {
-      Accept:
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    },
+  // Pull the *full* beneficiary list (no pagination) — the export
+  // should reflect every row that matches the active filters, not
+  // just the first page the user has scrolled to.
+  const list = await getMyReportBeneficiariesApi({
+    ...filters,
+    page: 1,
+    limit: 10000,
   });
 
-  const base64 = arrayBufferToBase64(response.data);
+  return buildBeneficiariesCsv(list.items || [], filters);
+};
 
-  const fileName =
-    extractFilenameFromHeaders(response.headers) ||
-    buildDefaultFileName(filters);
+/**
+ * Builds a CSV blob from already-mapped beneficiary objects (output
+ * of `mapBeneficiary`). Shared between the real download path and
+ * the mock builder so the column layout, formatting, and filename
+ * convention stay identical.
+ */
+const buildBeneficiariesCsv = (items, filters = {}) => {
+  const header = [
+    'S.No.',
+    'ID',
+    'Name',
+    'Age',
+    'Father/Husband',
+    'Samagra ID',
+    'Mobile',
+    'Address',
+    'Scheme',
+    'Scheme Code',
+    'Facility',
+    'Facility Type',
+    'Doctor',
+    'Procedure Date',
+    'Follow-up Date',
+    'Claim ID',
+    'Created At',
+  ];
+
+  const rows = items.map((b, idx) => [
+    String(idx + 1),
+    b.id != null ? String(b.id) : '',
+    b.beneficiaryName || '',
+    b.age || '',
+    b.guardianName || '',
+    b.samagraId || '',
+    b.mobile || '',
+    b.address || '',
+    b.schemeName || '',
+    b.schemeCode || '',
+    b.facilityName || '',
+    b.facilityType || '',
+    b.doctorName || '',
+    formatCsvDate(b.procedureDate),
+    formatCsvDate(b.followUpDate),
+    b.claimId || '',
+    formatCsvDate(b.createdAt),
+  ]);
+
+  const lines = [header, ...rows];
+  const csv =
+    '\uFEFF' + lines.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
+
+  const period = filters.period || 'today';
+  const fromPart =
+    period === 'custom' && filters.from ? toYmd(filters.from) : 'all';
+  const toPart =
+    period === 'custom' && filters.to ? toYmd(filters.to) : toYmd(new Date());
+  const fileName = `my_beneficiaries_${period}_${fromPart}_${toPart}.csv`;
 
   return {
-    base64,
+    base64: bytesToBase64(utf8Encode(csv)),
     fileName,
-    mimeType:
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    mimeType: 'text/csv',
   };
+};
+
+/**
+ * Formats a date for the Excel/CSV output as `DD/MM/YYYY`.
+ *
+ * Two reasons we deliberately drop the time portion and emit just the
+ * day:
+ *   1. CSVs don't carry column widths, so Excel's default column is
+ *      barely wide enough for the date itself — a full timestamp like
+ *      "2026-06-10 16:54:29" overflows and Excel renders `####` until
+ *      the user widens the column. Date-only fits comfortably.
+ *   2. The backend returns dates in two different shapes — ISO
+ *      ("2026-06-10T11:24:29.000Z") from `/by-id` and US-style
+ *      ("06/10/2026 11:24:29") from `/my-beneficiaries`. We normalize
+ *      both to the same `DD/MM/YYYY` for the report.
+ */
+const formatCsvDate = value => {
+  if (value == null || value === '') {
+    return '';
+  }
+  const d = parseFlexibleDate(value);
+  if (!d || Number.isNaN(d.getTime())) {
+    return '';
+  }
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(d.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+};
+
+/**
+ * Parses a date from any of the shapes the backend currently emits:
+ *   - ISO 8601:           "2026-06-10T11:24:29.000Z"
+ *   - US-formatted:       "06/10/2026 11:24:29"   (MM/DD/YYYY)
+ *   - JS Date instance
+ * Returns null if it can't recover a valid date.
+ */
+const parseFlexibleDate = value => {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const str = String(value).trim();
+  // MM/DD/YYYY [HH:mm:ss] — Hermes' Date constructor isn't reliable
+  // on this format, so we parse it explicitly.
+  const usMatch =
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(
+      str,
+    );
+  if (usMatch) {
+    const [, mm, dd, yyyy, hh = '0', mi = '0', ss = '0'] = usMatch;
+    const d = new Date(
+      Number(yyyy),
+      Number(mm) - 1,
+      Number(dd),
+      Number(hh),
+      Number(mi),
+      Number(ss),
+    );
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const fallback = new Date(str);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 };
 
 /* -------------------------------------------------------------------------- */
@@ -224,24 +554,6 @@ const arrayBufferToBase64 = buffer => {
   return out;
 };
 /* eslint-enable no-bitwise */
-
-const extractFilenameFromHeaders = headers => {
-  const cd =
-    headers?.['content-disposition'] || headers?.['Content-Disposition'];
-  if (!cd) {
-    return null;
-  }
-  const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
-  return m ? decodeURIComponent(m[1]) : null;
-};
-
-const buildDefaultFileName = ({period, from, to} = {}) => {
-  const stamp = toYmd(new Date());
-  if (period === 'custom' && from && to) {
-    return `MyReport_${toYmd(from)}_${toYmd(to)}.xlsx`;
-  }
-  return `MyReport_${period || 'today'}_${stamp}.xlsx`;
-};
 
 /* -------------------------------------------------------------------------- */
 /*  Mock data (only used while MOCK_MODE === true)                             */
@@ -445,80 +757,9 @@ const buildMockBeneficiaries = (filters = {}) => {
   };
 };
 
-const STATUS_DISPLAY = {
-  PENDING_AUTH: 'Pending',
-  AUTH_SUCCESS: 'Auth Success',
-  AUTH_FAILED: 'Failed',
-  SUBMITTED: 'Submitted',
-};
-
 const buildMockExcelDownload = (filters = {}) => {
   const list = buildMockBeneficiaries(filters);
-
-  // Single header row + one row per beneficiary, mirroring the .xlsx
-  // produced by the real backend so MOCK_MODE matches the production
-  // shape exactly. CSV (with a UTF-8 BOM) keeps Excel happy without
-  // shipping a binary .xlsx writer in the JS bundle.
-  const header = [
-    'S.No.',
-    'ID',
-    'Name',
-    'Age',
-    'Father/Husband',
-    'Samagra ID',
-    'Mobile',
-    'Address',
-    'Scheme',
-    'Scheme Code',
-    'Facility',
-    'Facility Type',
-    'Doctor',
-    'Procedure Date',
-    'Follow-up Date',
-    'Claim ID',
-    'Status',
-    'Created At',
-  ];
-
-  const rows = list.items.map((b, idx) => [
-    String(idx + 1),
-    String(b.id),
-    b.beneficiaryName || '',
-    b.age || '',
-    b.guardianName || '',
-    b.samagraId || '',
-    b.mobile || '',
-    b.address || '',
-    b.schemeName || '',
-    b.schemeCode || '',
-    b.facilityName || '',
-    b.facilityType || '',
-    b.doctorName || '',
-    b.procedureDate ? toYmd(b.procedureDate) : '',
-    b.followUpDate ? toYmd(b.followUpDate) : '',
-    b.claimId || '',
-    STATUS_DISPLAY[b.status] || b.status || '',
-    b.createdAt ? String(b.createdAt).replace('T', ' ').slice(0, 19) : '',
-  ]);
-
-  const lines = [header, ...rows];
-  const csv =
-    '\uFEFF' + lines.map(row => row.map(escapeCsvCell).join(',')).join('\r\n');
-
-  const bytes = utf8Encode(csv);
-  const period = filters.period || 'today';
-  const fromPart =
-    period === 'custom' && filters.from ? toYmd(filters.from) : 'all';
-  const toPart =
-    period === 'custom' && filters.to ? toYmd(filters.to) : toYmd(new Date());
-
-  const fileName = `my_beneficiaries_${period}_${fromPart}_${toPart}.csv`;
-
-  return {
-    base64: bytesToBase64(bytes),
-    fileName,
-    mimeType: 'text/csv',
-  };
+  return buildBeneficiariesCsv(list.items, filters);
 };
 
 /* ----------------------------- mock helpers ------------------------------ */

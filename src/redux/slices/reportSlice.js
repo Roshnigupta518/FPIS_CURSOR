@@ -43,11 +43,25 @@ import {
 /*  Thunks                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The deployed backend takes `userId` as an explicit query param (it
+ * doesn't rely on the JWT to scope the report). Pull the current user
+ * from auth state and merge it into the filters here so the API layer
+ * doesn't need to reach back into the store.
+ */
+const buildFiltersWithUser = state => {
+  const filters = state.report.filters;
+  const user = state.auth?.user;
+  const userId =
+    user?.id ?? user?.userId ?? user?.user_id ?? user?.UserID ?? null;
+  return {...filters, userId};
+};
+
 export const fetchMyReportSummary = createAsyncThunk(
   'report/fetchMySummary',
   async ({reset = false} = {}, {getState, rejectWithValue}) => {
     try {
-      const {filters} = getState().report;
+      const filters = buildFiltersWithUser(getState());
       const data = await getMyReportSummaryApi(filters);
       return {data, reset};
     } catch (err) {
@@ -60,7 +74,7 @@ export const fetchMyReportBeneficiaries = createAsyncThunk(
   'report/fetchMyBeneficiaries',
   async ({reset = false} = {}, {getState, rejectWithValue}) => {
     try {
-      const {filters} = getState().report;
+      const filters = buildFiltersWithUser(getState());
       const data = await getMyReportBeneficiariesApi(filters);
       return {data, reset};
     } catch (err) {
@@ -73,7 +87,7 @@ export const downloadMyReportExcel = createAsyncThunk(
   'report/downloadExcel',
   async (_, {getState, rejectWithValue}) => {
     try {
-      const {filters} = getState().report;
+      const filters = buildFiltersWithUser(getState());
       return await downloadMyReportExcelApi(filters);
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to generate report');

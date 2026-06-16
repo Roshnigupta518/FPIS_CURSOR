@@ -523,7 +523,7 @@ const MyReportScreen = ({navigation}) => {
               ) : (
                 sortedScheme.map((row, idx) => (
                   <View
-                    key={`${row.id}-${row.code}`}
+                    key={`scheme-${row.id ?? row.code ?? row.name ?? idx}`}
                     style={[
                       styles.tableRow,
                       idx === sortedScheme.length - 1 && styles.tableRowLast,
@@ -558,9 +558,9 @@ const MyReportScreen = ({navigation}) => {
                 {itemsLoading && listItems.length === 0 ? (
                   <Loader text={t('LOADING')} />
                 ) : (
-                  listItems.map(item => (
+                  listItems.map((item, idx) => (
                     <BeneficiaryCard
-                      key={String(item.id)}
+                      key={String(item.id ?? `row-${idx}`)}
                       item={item}
                       onPress={handleOpenBeneficiary}
                     />
