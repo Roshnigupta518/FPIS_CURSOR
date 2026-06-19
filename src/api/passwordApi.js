@@ -37,7 +37,7 @@
 import {request} from './axiosInstance';
 import {ENDPOINTS} from '../constants/api';
 
-const MOCK_MODE = true;
+const MOCK_MODE = false;
 
 /* -------------------------------------------------------------------------- */
 /*  Mock helpers                                                              */

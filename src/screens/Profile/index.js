@@ -68,8 +68,6 @@ const ProfileScreen = ({navigation}) => {
     ]);
   }, [dispatch, t]);
 
-  console.log({user})
-
   return (
     <View style={styles.flex}>
       <CustomHeader title={t('PROFILE')} onBack={() => navigation.goBack()} />
