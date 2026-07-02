@@ -407,7 +407,7 @@ const buildBeneficiariesCsv = (items, filters = {}) => {
   const header = [
     'S.No.',
     'ID',
-    'Name',
+    'Name of beneficiary',
     'Age',
     'Father/Husband',
     'Samagra ID',
@@ -421,7 +421,7 @@ const buildBeneficiariesCsv = (items, filters = {}) => {
     'Procedure Date',
     'Follow-up Date',
     'Claim ID',
-    'Created At',
+    'Created Date',
   ];
 
   const rows = items.map((b, idx) => [

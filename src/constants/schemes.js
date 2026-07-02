@@ -176,7 +176,7 @@ const BASE_FIELDS = [
   {
     key: 'beneficiaryName',
     label: 'Beneficiary Name',
-    labelHi: 'लाभार्थी का नाम',
+    labelHi: 'हितग्राही का नाम',
     type: 'name',
     regex: 'NAME',
     required: true,
@@ -251,7 +251,7 @@ const BASE_FIELDS = [
   {
     key: 'facilityName',
     label: 'Facility Name',
-    labelHi: 'सुविधा का नाम',
+    labelHi: 'संस्था का नाम',
     type: 'text',
     regex: 'TEXT',
     required: true,
