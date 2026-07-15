@@ -10,6 +10,7 @@
  */
 
 import {ENDPOINTS, UPLOAD_TIMEOUT_MS} from '../constants/api';
+import {logger} from '../utils/logger';
 import {beneficiaryToServer, mapBeneficiary} from '../utils/mappers';
 import {request} from './axiosInstance';
 
@@ -28,7 +29,7 @@ export const listBeneficiariesApi = async (filters = {}) => {
   if (filters.dateFrom)   params.date_from   = filters.dateFrom;
   if (filters.dateTo)     params.date_to     = filters.dateTo;
 
-  // console.log({params})
+  logger.debug('[BENEFICIARIES.LIST] params', params);
   const {data, meta} = await request({
     method: 'GET',
     url: ENDPOINTS.BENEFICIARIES.LIST,
@@ -55,14 +56,13 @@ export const getBeneficiaryByIdApi = async id => {
 
 export const createBeneficiaryApi = async (form, extras) => {
   const payload = beneficiaryToServer(form, extras);
-  console.log({payload})
+  logger.debug('[BENEFICIARIES.CREATE] payload', payload);
   const {data} = await request({
     method: 'POST',
     url: ENDPOINTS.BENEFICIARIES.LIST,
     data: payload,
   });
-  // return mapBeneficiary(data);
-  return data
+  return data;
 };
 
 export const updateBeneficiaryApi = async (id, form, extras) => {

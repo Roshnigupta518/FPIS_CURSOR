@@ -13,6 +13,7 @@
 
 import {ENDPOINTS} from '../constants/api';
 import {getDeviceInfo} from '../utils/deviceInfo';
+import {logger} from '../utils/logger';
 import {request} from './axiosInstance';
 
 export const loginApi = async ({userId, password}) => {
@@ -22,13 +23,13 @@ export const loginApi = async ({userId, password}) => {
     password,
     ...deviceInfo,
   };
-  // console.log('[LOGIN REQUEST BODY] →', JSON.stringify(body, null, 2));
+  logger.debug('[LOGIN REQUEST]', body);
   const response = await request({
     method: 'POST',
     url: ENDPOINTS.AUTH.LOGIN,
     data: body,
   });
-  // console.log('[LOGIN RESPONSE] →', JSON.stringify(response, null, 2));
+  logger.debug('[LOGIN RESPONSE]', response);
   return response;
 };
 

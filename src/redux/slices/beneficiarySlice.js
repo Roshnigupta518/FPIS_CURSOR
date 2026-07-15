@@ -33,6 +33,7 @@ import {
   listBeneficiariesApi,
   updateBeneficiaryApi,
 } from '../../api/beneficiaryApi';
+import {logger} from '../../utils/logger';
 
 const DEFAULT_LIMIT = 10;
 
@@ -69,7 +70,7 @@ export const fetchMoreBeneficiaries = createAsyncThunk(
 
       const nextPage = page + 1;
 
-      console.log('NEXT PAGE =>', nextPage);
+      logger.debug('[BENEFICIARIES.PAGE] nextPage', nextPage);
 
       const res = await listBeneficiariesApi({
         ...filters,

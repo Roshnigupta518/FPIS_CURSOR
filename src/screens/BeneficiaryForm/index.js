@@ -46,6 +46,7 @@ import {
 } from '../../styles/theme';
 import { startParichaiAuth } from '../../services/ParichaiAuthService';
 import { prepareAadhaarRequest } from '../../api/AadhaarGatewayService';
+import { logger } from '../../utils/logger';
 import {CommonActions} from '@react-navigation/native';
 
 const SERVER_TO_CLIENT_KEY = {
@@ -113,7 +114,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
     let aadhaar;
     try {
       aadhaar = await prepareAadhaarRequest({ serviceType: 6 });
-      console.log({ aadhaar });
+      logger.debug('[AADHAAR] PrepareRequest response', aadhaar);
     } catch (e) {
       showToast({ type: 'error', message: 'Aadhaar gateway error' });
       return;
@@ -131,7 +132,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
         disclosureInfoType: String(aadhaar.disclosureInfoType ?? 1),
         environment: 'PREPROD',
       });
-      console.log('Parichai SDK response', sdkResponse);
+      logger.debug('[AADHAAR] Parichai SDK response', sdkResponse);
 
       // setTimeout(() => {
       //   Alert.alert(
@@ -148,7 +149,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
             ? JSON.parse(gatewayResponse)
             : gatewayResponse;
 
-        console.log('Parsed Gateway Response', parsed);
+        logger.debug('[AADHAAR] Parsed Gateway Response', parsed);
 
         authSuccess =
           parsed?.ret === '1' &&
@@ -162,7 +163,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
       }
 
     } catch (e) {
-      console.log('Parichai SDK error', e);
+      logger.warn('[AADHAAR] Parichai SDK error', e?.message || e);
       showToast({
         type: 'error',
         message: 'Parichai SDK error',
@@ -182,7 +183,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
     };
 
     const result = await dispatch(createBeneficiary(payload));
-    console.log({ beneficiarycrate: result.payload });
+    logger.debug('[BENEFICIARY.CREATE] result', result.payload);
 
     // 4) Save fail -> just show toast, stop.
     if (!createBeneficiary.fulfilled.match(result)) {
