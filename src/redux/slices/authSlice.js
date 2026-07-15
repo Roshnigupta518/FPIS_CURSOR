@@ -3,22 +3,30 @@
  *
  *  Async thunks
  *  ────────────
- *    login        — POST /auth/login, stores token + user, persists to AsyncStorage
- *    bootstrapAuth — rehydrates token/user on app launch (no network call)
- *    logout       — clears redux + AsyncStorage; called on user action and on 401
+ *    login          — POST /Auth/login, stores token + refreshToken + user
+ *                     in AsyncStorage. Rejects with a structured
+ *                     { code, message, ... } payload so the UI can show
+ *                     the right error state (invalid creds, account
+ *                     locked, already logged in on another device, rate
+ *                     limited, network error).
+ *    bootstrapAuth  — rehydrates token/user on app launch (no network call)
+ *    logout         — calls /Auth/logout so the server can invalidate the
+ *                     session, then clears local state. Also fired by the
+ *                     axios 401 handler when refresh fails.
  *
  *  State shape
  *  ───────────
  *    {
  *      isAuthenticated, bootstrapping,
  *      user: {id, name, mobile, role, facility:{id,name,type,district}},
- *      token, loginType (UI hint), loading, error
+ *      token, loginType (UI hint), loading,
+ *      error: { code, message, otherDevice?, loggedInSince? } | null
  *    }
  */
 
 import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
 
-import {loginApi} from '../../api/authApi';
+import {loginApi, logoutApi} from '../../api/authApi';
 import {LOGIN_TYPES} from '../../constants/facilities';
 import {getItem, removeItem, setItem, StorageKeys} from '../../utils/storage';
 
@@ -26,33 +34,81 @@ import {getItem, removeItem, setItem, StorageKeys} from '../../utils/storage';
 /*  Async thunks                                                               */
 /* -------------------------------------------------------------------------- */
 
+const mapErrorToPayload = err => {
+  const status = err?.status || 0;
+  const backendMessage = err?.message;
+
+  if (status === 401 || status === 400) {
+    return {
+      code: 'INVALID_CREDENTIALS',
+      message: 'गलत User ID या Password। कृपया दुबारा try करें।',
+    };
+  }
+  if (status === 423) {
+    return {
+      code: 'ACCOUNT_LOCKED',
+      message:
+        backendMessage ||
+        'बहुत सारे गलत attempts के कारण account 30 मिनट के लिए lock हो गया है।',
+    };
+  }
+  if (status === 409 && err?.errorCode === 'SESSION_ACTIVE_ON_OTHER_DEVICE') {
+    return {
+      code: 'ALREADY_LOGGED_IN',
+      message:
+        backendMessage ||
+        'आप पहले से किसी अन्य device पर logged in हैं। ' +
+          'कृपया पहले उस device पर Logout button दबाएं, फिर यहाँ login करें।',
+      otherDevice: err?.data?.otherDevice,
+      loggedInSince: err?.data?.loggedInSince,
+    };
+  }
+  if (status === 429) {
+    return {
+      code: 'TOO_MANY_ATTEMPTS',
+      message: 'बहुत ज़्यादा attempts हो गए। कुछ मिनट बाद try करें।',
+    };
+  }
+  if (status >= 500) {
+    return {
+      code: 'SERVER_ERROR',
+      message: 'Server में समस्या है। थोड़ी देर बाद try करें।',
+    };
+  }
+  if (status === 0) {
+    return {
+      code: 'NETWORK_ERROR',
+      message: 'Internet connection नहीं है। कृपया network check करें।',
+    };
+  }
+  return {
+    code: 'UNKNOWN',
+    message: backendMessage || 'कुछ गड़बड़ हुई। दुबारा try करें।',
+  };
+};
+
 export const login = createAsyncThunk(
   'auth/login',
   async ({userId, password}, {rejectWithValue}) => {
     try {
       const response = await loginApi({userId, password});
 
-      // console.log('login response', response);
-      
       if (!response?.success || !response?.data) {
-        return rejectWithValue(
-          response?.message || 'Invalid User Id or password.',
-        );
+        return rejectWithValue({
+          code: 'LOGIN_FAILED',
+          message: response?.message || 'Invalid User ID or Password',
+        });
       }
-      
-      await setItem(
-        StorageKeys.AUTH_TOKEN,
-        response.data.token,
-      );
-      
-      await setItem(
-        StorageKeys.USER,
-        response.data.user,
-      );
-      
+
+      await setItem(StorageKeys.AUTH_TOKEN, response.data.token);
+      if (response.data.refreshToken) {
+        await setItem(StorageKeys.REFRESH_TOKEN, response.data.refreshToken);
+      }
+      await setItem(StorageKeys.USER, response.data.user);
+
       return response.data;
     } catch (err) {
-      return rejectWithValue(err?.message || 'Invalid credentials');
+      return rejectWithValue(mapErrorToPayload(err));
     }
   },
 );
@@ -62,12 +118,23 @@ export const bootstrapAuth = createAsyncThunk('auth/bootstrap', async () => {
     getItem(StorageKeys.AUTH_TOKEN),
     getItem(StorageKeys.USER, true),
   ]);
-  if (!token || !user) return null;
+  if (!token || !user) {
+    return null;
+  }
   return {token, user};
 });
 
 export const logout = createAsyncThunk('auth/logout', async () => {
+  // Best-effort: tell the server so the session record gets deactivated
+  // and the user can immediately log in from another device. If the
+  // network call fails (offline, server down) we still clear locally.
+  try {
+    await logoutApi();
+  } catch (_e) {
+    /* swallow */
+  }
   await removeItem(StorageKeys.AUTH_TOKEN);
+  await removeItem(StorageKeys.REFRESH_TOKEN);
   await removeItem(StorageKeys.USER);
 });
 
@@ -95,7 +162,7 @@ const authSlice = createSlice({
     clearAuthError(state) {
       state.error = null;
     },
-    // Called by axios interceptor on 401 (and by Logout button).
+    // Called by axios interceptor when refresh also fails.
     forceLogout(state) {
       state.isAuthenticated = false;
       state.user = null;
@@ -114,14 +181,16 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.token = action.payload.token;
         state.user = action.payload.user;
-        // Sync loginType to whatever role the server returned.
         if (action.payload.user?.role) {
           state.loginType = action.payload.user.role;
         }
       })
       .addCase(login.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload || 'Login failed';
+        state.error = action.payload || {
+          code: 'UNKNOWN',
+          message: 'Login failed',
+        };
       })
       .addCase(bootstrapAuth.pending, state => {
         state.bootstrapping = true;

@@ -8,8 +8,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const StorageKeys = {
   AUTH_TOKEN: '@fwa/authToken',
+  REFRESH_TOKEN: '@fwa/refreshToken',
   USER: '@fwa/user',
   LANGUAGE: '@fwa/language',
+  DEVICE_ID: '@fwa/deviceId',
+  SAVED_USER_ID: '@fwa/savedUserId',
 };
 
 export const setItem = async (key, value) => {

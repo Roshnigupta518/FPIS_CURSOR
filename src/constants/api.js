@@ -34,6 +34,8 @@ export const UPLOAD_TIMEOUT_MS = 45000;
 export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/Auth/login',
+    LOGOUT: '/Auth/logout',
+    REFRESH_TOKEN: '/Auth/refresh-token',
     ME: '/auth/me',
     REGISTER: '/auth/register',
     FORGOT_PASSWORD_REQUEST_OTP: '/auth/forgot-password/request-otp',

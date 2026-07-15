@@ -1,18 +1,19 @@
+/**
+ * Thin JS wrapper around the native ParichaiAuthModule.
+ *
+ * IMPORTANT: never log the params or the result. Both may contain the
+ * Aadhaar reference id and the encrypted authentication payload — this
+ * is exactly the "production debug logging" finding flagged in the
+ * NHM SAST report and must not be reintroduced.
+ */
+
 import {NativeModules} from 'react-native';
 
 const {ParichaiAuthModule} = NativeModules;
 
-console.log('NativeModules => ', NativeModules);
-console.log('ParichaiAuthModule => ', NativeModules.ParichaiAuthModule);
-
 export const startParichaiAuth = async params => {
-  try {
-    console.log('Calling Native Method');
-    const result = await ParichaiAuthModule.startParichaiAuth(params);
-    // console.log({result})
-    console.log('Native Result =>', result);
-    return result;
-  } catch (error) {
-    throw error;
+  if (!ParichaiAuthModule) {
+    throw new Error('ParichaiAuthModule is not linked on this platform.');
   }
+  return ParichaiAuthModule.startParichaiAuth(params);
 };

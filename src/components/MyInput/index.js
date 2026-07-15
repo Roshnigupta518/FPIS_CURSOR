@@ -46,6 +46,7 @@ const MyInput = ({
   onFocus,
   autoCapitalize = 'sentences',
   autoCorrect = false,
+  contextMenuHidden = false,
   style,
   inputStyle,
   testID,
@@ -104,6 +105,7 @@ const MyInput = ({
           onBlur={handleBlur}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
+          contextMenuHidden={contextMenuHidden}
           style={[
             styles.input,
             multiline && styles.inputMultiline,

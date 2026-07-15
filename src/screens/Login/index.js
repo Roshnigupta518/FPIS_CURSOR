@@ -1,23 +1,33 @@
 /**
  * Login screen.
  *
- *  - Mobile + password (matches the backend's POST /auth/login contract)
- *  - Role pills at the top are a UX hint that auto-fills the demo
- *    mobile number for that role (so testers can switch quickly).
- *    The real role is decided server-side from the user record.
- *  - On success the bootstrap → navigator swap takes the user straight
- *    to the Dashboard.
+ *  - User ID + password login against POST /Auth/login. Device info
+ *    (device_id, model, OS, app version) is attached automatically by
+ *    authApi so the backend can enforce single-active-session.
+ *  - Handles the full backend error taxonomy:
+ *      401  invalid credentials
+ *      423  account locked (rate-limit lockout)
+ *      429  too many attempts
+ *      409  SESSION_ACTIVE_ON_OTHER_DEVICE — surfaces a modal explaining
+ *           the user must log out from the other device first (strict
+ *           single-session policy required by NHM security audit).
+ *  - Blocks screenshots / screen recording on Android while this screen
+ *    is focused (Aadhaar-adjacent auth surface — cannot be captured).
+ *  - "Remember User ID" persists ONLY the user id in non-secure storage,
+ *    never the password.
  */
 
 import React, {useCallback, useEffect, useState} from 'react';
 import {
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View, Image
+  View,
 } from 'react-native';
 import {useTranslation} from 'react-i18next';
 import {SafeAreaView} from 'react-native-safe-area-context';
@@ -27,15 +37,9 @@ import CustomButton from '../../components/CustomButton';
 import MyInput from '../../components/MyInput';
 import {showToast} from '../../components/Toast';
 
-import {COLORS} from '../../constants/colors';
-import {LOGIN_TYPES} from '../../constants/facilities';
+import {COLORS, IMAGES} from '../../constants/colors';
 import {ROUTES} from '../../constants/routes';
-import {LOGIN_TYPE_OPTIONS} from '../../constants/strings';
-import {
-  clearAuthError,
-  login,
-  setLoginType,
-} from '../../redux/slices/authSlice';
+import {clearAuthError, login} from '../../redux/slices/authSlice';
 import {
   FONT_SIZE,
   FONT_WEIGHT,
@@ -44,24 +48,39 @@ import {
   SPACING,
 } from '../../styles/theme';
 import {changeLanguage} from '../../utils/i18n';
+import {getItem, removeItem, setItem, StorageKeys} from '../../utils/storage';
 import {RegexType} from '../../utils/validation';
-import { IMAGES } from '../../constants/colors';
 
-// Demo mobile numbers — match the backend's `npm run db:seed` output.
-const DEMO_MOBILE = {
-  [LOGIN_TYPES.BLOCK]: '9000000001',
-  [LOGIN_TYPES.DISTRICT]: '9000000002',
-  [LOGIN_TYPES.MEDICAL]: '9000000003',
+const formatLoginTime = iso => {
+  if (!iso) {
+    return 'N/A';
+  }
+  try {
+    return new Date(iso).toLocaleString();
+  } catch (_e) {
+    return iso;
+  }
 };
 
 const LoginScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t, i18n} = useTranslation();
-  const {loading, error, loginType} = useSelector(s => s.auth);
+  const {loading} = useSelector(s => s.auth);
 
-  const [userId, setUserId] = useState('DH_Bhopal');
-  const [password, setPassword] = useState('Welcome@1');
-  const [touched, setTouched] = useState({mobile: false, password: false});
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberUserId, setRememberUserId] = useState(false);
+  const [touched, setTouched] = useState({userId: false, password: false});
+
+  useEffect(() => {
+    (async () => {
+      const saved = await getItem(StorageKeys.SAVED_USER_ID);
+      if (saved) {
+        setUserId(saved);
+        setRememberUserId(true);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -69,47 +88,81 @@ const LoginScreen = ({navigation}) => {
     };
   }, [dispatch]);
 
-  useEffect(() => {
-    if (error) {
-      showToast({type: 'error', message: error});
-    }
-  }, [error]);
-
-  const userIdError = '';
+  const userIdError =
+    touched.userId && userId.trim().length === 0 ? t('ERR_INVALID_TEXT') : null;
   const passwordError =
     touched.password && !RegexType.PASSWORD.test(password || '')
       ? t('ERR_INVALID_TEXT')
       : null;
 
-      const canSubmit =
-      userId.length > 0 &&
-      password.length > 0 &&
-      !userIdError &&
-      !passwordError;
+  const canSubmit =
+    userId.trim().length > 0 &&
+    password.length > 0 &&
+    !userIdError &&
+    !passwordError &&
+    !loading;
 
-  const handleSelectType = useCallback(
-    key => {
-      // dispatch(setLoginType(key));
-      setMobile(key || '');
+  const persistRememberedUserId = useCallback(
+    async trimmedUserId => {
+      if (rememberUserId) {
+        await setItem(StorageKeys.SAVED_USER_ID, trimmedUserId);
+      } else {
+        await removeItem(StorageKeys.SAVED_USER_ID);
+      }
     },
-    [dispatch],
+    [rememberUserId],
   );
 
+  const showAlreadyLoggedInDialog = useCallback(err => {
+    Alert.alert(
+      'पहले से Login हैं',
+      'आप पहले से किसी अन्य device पर logged in हैं।\n\n' +
+        `Device: ${err.otherDevice || 'Unknown'}\n` +
+        `Login हुआ: ${formatLoginTime(err.loggedInSince)}\n\n` +
+        'कृपया पहले उस device पर Logout button दबाएं, फिर यहाँ login करें।',
+      [{text: 'ठीक है', style: 'default'}],
+      {cancelable: false},
+    );
+  }, []);
+
   const handleLogin = useCallback(async () => {
-    setTouched({mobile: true, password: true});
-    if (!canSubmit) return;
-    const result = await dispatch(login({userId, password}));
+    setTouched({userId: true, password: true});
+    if (!canSubmit) {
+      return;
+    }
+
+    const trimmedUserId = userId.trim();
+    await persistRememberedUserId(trimmedUserId);
+
+    const result = await dispatch(login({userId: trimmedUserId, password}));
+
     if (login.fulfilled.match(result)) {
       showToast({type: 'success', message: t('WELCOME_BACK')});
+      return;
     }
-  }, [canSubmit, dispatch, loginType, userId, password, t]);
+
+    const err = result.payload;
+    if (err?.code === 'ALREADY_LOGGED_IN') {
+      showAlreadyLoggedInDialog(err);
+    } else if (err?.message) {
+      showToast({type: 'error', message: err.message});
+    }
+  }, [
+    canSubmit,
+    dispatch,
+    userId,
+    password,
+    t,
+    persistRememberedUserId,
+    showAlreadyLoggedInDialog,
+  ]);
 
   const toggleLanguage = useCallback(() => {
     changeLanguage(i18n.language === 'hi' ? 'en' : 'hi');
   }, [i18n.language]);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top','bottom']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -128,8 +181,7 @@ const LoginScreen = ({navigation}) => {
             </View>
 
             <View style={styles.logoCircle}>
-              {/* <Text style={styles.logoText}>{'\u2695'}</Text> */}
-              <Image source={IMAGES.logo} style={{width:100, height:100}} />
+              <Image source={IMAGES.logo} style={{width: 100, height: 100}} />
             </View>
             <Text style={styles.appTitle}>{t('APP_NAME')}</Text>
             <Text style={styles.appSubtitle}>{t('MIN_HEALTH')}</Text>
@@ -139,39 +191,15 @@ const LoginScreen = ({navigation}) => {
           {/* Card */}
           <View style={[styles.card, SHADOWS.card]}>
             <Text style={styles.welcome}>{t('LOGIN')}</Text>
-            {/* <Text style={styles.cardSubtitle}>{t('SELECT_LOGIN_TYPE')}</Text> */}
-
-            {/* <View style={styles.typeRow}>
-              {LOGIN_TYPE_OPTIONS.map(opt => {
-                const isActive = loginType === opt.key;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    onPress={() => handleSelectType(opt.key)}
-                    activeOpacity={0.85}
-                    style={[styles.typePill, isActive && styles.typePillActive]}>
-                    <Text
-                      numberOfLines={2}
-                      style={[
-                        styles.typePillText,
-                        isActive && styles.typePillTextActive,
-                      ]}>
-                      {i18n.language === 'hi' ? opt.labelHi : opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View> */}
 
             <MyInput
               label={t('USERID')}
               placeholder="Enter here"
               value={userId}
-              onChangeText={v => setUserId(v)}
-              onBlur={() => setTouched(s => ({...s, mobile: true}))}
+              onChangeText={setUserId}
+              onBlur={() => setTouched(s => ({...s, userId: true}))}
               autoCapitalize="none"
-              // keyboardType="phone-pad"
-              // maxLength={10}
+              autoCorrect={false}
               required
               error={userIdError}
               leftIcon={<Text style={styles.fieldIcon}>{'\uD83D\uDCF1'}</Text>}
@@ -185,10 +213,27 @@ const LoginScreen = ({navigation}) => {
               onBlur={() => setTouched(s => ({...s, password: true}))}
               secureTextEntry
               autoCapitalize="none"
+              autoCorrect={false}
+              contextMenuHidden
               required
               error={passwordError}
               leftIcon={<Text style={styles.fieldIcon}>{'\uD83D\uDD12'}</Text>}
             />
+
+            <TouchableOpacity
+              onPress={() => setRememberUserId(v => !v)}
+              style={styles.rememberRow}
+              hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}
+              activeOpacity={0.7}>
+              <View
+                style={[
+                  styles.checkbox,
+                  rememberUserId && styles.checkboxChecked,
+                ]}>
+                {rememberUserId && <Text style={styles.checkboxTick}>✓</Text>}
+              </View>
+              <Text style={styles.rememberText}>User ID याद रखें</Text>
+            </TouchableOpacity>
 
             <CustomButton
               title={t('LOGIN')}
@@ -204,17 +249,10 @@ const LoginScreen = ({navigation}) => {
               hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
               <Text style={styles.forgotText}>{t('FORGOT_PASSWORD')}?</Text>
             </TouchableOpacity>
-
-            {/* <Text style={styles.hint}>
-              Demo password: <Text style={styles.hintStrong}>password123</Text>
-            </Text> */}
           </View>
-
         </ScrollView>
         <Text style={styles.footer}>{t('VERSION')} 1.0.0</Text>
-
       </KeyboardAvoidingView>
-      
     </SafeAreaView>
   );
 };
@@ -249,7 +287,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: SPACING.md,
   },
-  logoText: {fontSize: 40, color: COLORS.primary},
   appTitle: {
     color: '#fff',
     fontSize: FONT_SIZE.display,
@@ -278,49 +315,36 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.heading,
     fontWeight: FONT_WEIGHT.bold,
     color: COLORS.textPrimary,
-    marginBottom:20,
-    textAlign:'center'
-  },
-  cardSubtitle: {
-    fontSize: FONT_SIZE.small,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-    marginBottom: SPACING.md,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: SPACING.lg,
-    marginHorizontal: -4,
-  },
-  typePill: {
-    flexGrow: 1,
-    flexBasis: '30%',
-    margin: 4,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
-    borderRadius: RADIUS.md,
-    backgroundColor: COLORS.background,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  typePillActive: {
-    backgroundColor: COLORS.primaryLight,
-    borderColor: COLORS.primary,
-  },
-  typePillText: {
-    fontSize: FONT_SIZE.caption,
-    color: COLORS.textSecondary,
-    fontWeight: FONT_WEIGHT.medium,
+    marginBottom: 20,
     textAlign: 'center',
   },
-  typePillTextActive: {
-    color: COLORS.primary,
-    fontWeight: FONT_WEIGHT.semibold,
-  },
   fieldIcon: {fontSize: 16},
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: SPACING.sm,
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  checkboxTick: {color: '#fff', fontSize: 14, fontWeight: '700'},
+  rememberText: {
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.small,
+  },
   forgotRow: {
     alignItems: 'center',
     paddingVertical: SPACING.md,
@@ -330,13 +354,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.small,
     fontWeight: FONT_WEIGHT.semibold,
   },
-  hint: {
-    textAlign: 'center',
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.caption,
-    marginTop: SPACING.md,
-  },
-  hintStrong: {color: COLORS.textSecondary, fontWeight: '700'},
   footer: {
     textAlign: 'center',
     color: COLORS.textOnPrimary,
