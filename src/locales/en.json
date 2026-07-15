@@ -90,6 +90,7 @@
   "DISTRICT" : "District",
   "BLOCK" : "Block",
   "USERID" : "User Id",
+  "REMEMBER_USERID": "Remember User ID",
   "MY_REPORT": "My Report",
   "MY_REPORT_SUBTITLE": "Summary of beneficiaries added by you",
   "PERIOD_TODAY": "Today",

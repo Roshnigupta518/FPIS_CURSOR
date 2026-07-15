@@ -232,7 +232,7 @@ const LoginScreen = ({navigation}) => {
                 ]}>
                 {rememberUserId && <Text style={styles.checkboxTick}>✓</Text>}
               </View>
-              <Text style={styles.rememberText}>User ID याद रखें</Text>
+              <Text style={styles.rememberText}>{t('REMEMBER_USERID')}</Text>
             </TouchableOpacity>
 
             <CustomButton

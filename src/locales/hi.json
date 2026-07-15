@@ -90,6 +90,7 @@
   "DISTRICT" : "ज़िला",
   "BLOCK" : "खंड",
   "USERID" : "यूज़र आईडी",
+  "REMEMBER_USERID": "यूज़र आईडी याद रखें",
   "MY_REPORT": "मेरी रिपोर्ट",
   "MY_REPORT_SUBTITLE": "आपके द्वारा जोड़े गए लाभार्थियों का सारांश",
   "PERIOD_TODAY": "आज",

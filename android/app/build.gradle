@@ -53,8 +53,16 @@ react {
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ *
+ * NHM SAST hardening — enabled for RELEASE builds only so that R8 renames
+ * classes/methods/fields from the bundled `parichai-auth-sdk-release.aar`
+ * (AuthRepository, CryptoUtil, SafeNetworkLogInterceptor, `parichai_auth_key`
+ * field, `getOrCreateSecretKey` method, etc.). Debug builds keep the normal
+ * dev experience with no obfuscation. Rules live in proguard-rules.pro and
+ * intentionally disable shrinking so React Native / reflection-heavy libs
+ * don't break at runtime.
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)

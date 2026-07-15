@@ -67,10 +67,10 @@ class ParichaiAuthModule(private val reactContext: ReactApplicationContext) :
         )
 
         ParichaiAuth.login(activity, config, object : AuthCallback {
-            override fun onSuccess(resultData: AuthSuccess) {
+            override fun onSuccess(result: AuthSuccess) {
                 val map = Arguments.createMap().apply {
                     putString("status", "success")
-                    putMap("data", toWritableMap(resultData.toMap()))
+                    putMap("data", toWritableMap(result.toMap()))
                 }
                 promise.resolve(map)
             }
