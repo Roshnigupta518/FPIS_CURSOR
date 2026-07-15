@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NHM SAST hardening — Cleartext Traffic Globally Permitted
+  =========================================================
+  Previously the app set android:usesCleartextTraffic="true" on the
+  <application> element, which globally permits HTTP traffic to any
+  host and is what the SAST report flagged (CWE-319, CVSS 6.9).
+
+  We now block cleartext by default and grant a *scoped* exception
+  only to the current NHM backend IP (139.5.6.137). All other hosts
+  are forced to HTTPS. This is the standard Android remediation for
+  the SAST finding and lets auditors close it as "scoped mitigation
+  pending server-side HTTPS rollout".
+
+  TODO (server team → close audit): once 139.5.6.137 exposes a valid
+  TLS certificate, flip src/constants/api.js to https:// and DELETE
+  the <domain-config> block below so cleartext is fully denied.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- TEMPORARY: backend is still on HTTP. Remove once HTTPS is live. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">139.5.6.137</domain>
+    </domain-config>
+</network-security-config>
