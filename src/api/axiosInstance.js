@@ -16,6 +16,8 @@
 import axios from 'axios';
 
 import {API_BASE_URL, ENDPOINTS, REQUEST_TIMEOUT_MS} from '../constants/api';
+import {getDeviceId} from '../utils/deviceInfo';
+import {logger} from '../utils/logger';
 import {getItem, removeItem, setItem, StorageKeys} from '../utils/storage';
 
 const apiClient = axios.create({
@@ -57,22 +59,36 @@ let refreshInFlight = null;
 const doRefresh = async () => {
   const refreshToken = await getItem(StorageKeys.REFRESH_TOKEN);
   if (!refreshToken) {
+    logger.debug('[REFRESH] no refresh token in storage — giving up');
     return null;
   }
+  const device_id = await getDeviceId();
+  logger.debug('[REFRESH] attempting refresh', {device_id});
 
   try {
+    // Use a bare axios (not apiClient) so we don't recurse through
+    // our own interceptors if the refresh itself returns 401.
     const {data} = await axios.post(
       `${API_BASE_URL}${ENDPOINTS.AUTH.REFRESH_TOKEN}`,
-      {refreshToken},
+      {refreshToken, device_id},
       {timeout: REQUEST_TIMEOUT_MS},
     );
     const newToken = data?.data?.token;
+    const newRefreshToken = data?.data?.refreshToken;
+    logger.debug('[REFRESH] response', data);
     if (!newToken) {
       return null;
     }
     await setItem(StorageKeys.AUTH_TOKEN, newToken);
+    // Some backends rotate the refresh token on every use (recommended
+    // for security). Persist the new one if present, keep the old one
+    // if the server chose to return the same value.
+    if (newRefreshToken) {
+      await setItem(StorageKeys.REFRESH_TOKEN, newRefreshToken);
+    }
     return newToken;
-  } catch (_e) {
+  } catch (e) {
+    logger.warn('[REFRESH] failed', e?.response?.status, e?.response?.data);
     return null;
   }
 };

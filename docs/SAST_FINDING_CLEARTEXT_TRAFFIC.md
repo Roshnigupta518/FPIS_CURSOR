@@ -28,51 +28,97 @@ release builds could not reach the backend at all.
 ## 2. Fix applied on the app side
 
 The global attribute has been removed and replaced with a scoped Android
-`networkSecurityConfig` resource. The behaviour is now:
+`networkSecurityConfig` resource, and the app has been switched to
+HTTPS. The current behaviour is:
 
 ### Release / production APK
 
 `android/app/src/main/res/xml/network_security_config.xml`
 
 - **Default:** cleartext is denied for every host.
-- **Scoped exception:** cleartext is permitted **only** for `139.5.6.137`
-  (documented as temporary — see Section 3).
-- Trust anchor: system CA store (default).
+- **Backend host (139.5.6.137):** cleartext still denied. TLS is required.
+  The exact self-signed certificate the backend currently serves is
+  pinned as a scoped trust anchor via `<certificates src="@raw/nhm_server" />`
+  (see Section 3 for why this is a temporary bridge).
 
 `android/app/src/main/AndroidManifest.xml` no longer contains
 `android:usesCleartextTraffic`; instead it declares
 `android:networkSecurityConfig="@xml/network_security_config"`.
 
 Static-analysis scanners look for the `usesCleartextTraffic="true"`
-attribute at the `<application>` level. Because that attribute is gone,
-the SAST finding as literally described is closed. Any remaining risk
-is now visibly scoped to a single IP with a documented remediation path.
+attribute at the `<application>` level. Because that attribute is gone
+and every domain-config now uses HTTPS with a trust anchor, the SAST
+finding as literally described is closed.
 
 ### Debug builds
 
-`android/app/src/debug/AndroidManifest.xml` overrides the config to
-`android/app/src/debug/res/xml/network_security_config.xml`, which
-permits cleartext for `localhost`, `127.0.0.1`, `10.0.2.2`, `10.0.3.2`
-and `139.5.6.137` so Metro bundler and the current dev backend keep
-working. This file is not packaged into the release APK.
+`android/app/src/debug/res/xml/network_security_config.xml` mirrors the
+release trust anchor for 139.5.6.137 and additionally permits cleartext
+for the local dev hosts (`localhost`, `127.0.0.1`, `10.0.2.2`, `10.0.3.2`)
+so Metro bundler keeps working. This file is not packaged into the
+release APK.
 
-## 3. Pending server-side action (required to fully close)
+## 3. Temporary bridge: self-signed cert with hostname mismatch
 
-The scoped cleartext exception for `139.5.6.137` is a temporary bridge.
-To fully close the finding the backend team must:
+The backend has enabled HTTPS but currently serves a **self-signed
+certificate** whose Subject/Issuer is `CN=localhost` and whose only
+SAN is `DNS:localhost`. Two things follow:
 
-1. Provision a valid TLS certificate for the production hostname
-   (either the raw IP with a CA that supports IP-SAN certificates, or
-   preferably a DNS name such as `fpis-api.nhmmp.gov.in` with a
-   DigiCert / Let's Encrypt / GoI-issued certificate).
+1. Android does not trust the cert (no CA chain).
+2. Even after pinning, hostname verification would fail because the URL
+   host `139.5.6.137` does not match the cert's `DNS:localhost` SAN.
+
+To make development / testing usable while the backend team provisions
+a proper CA-signed certificate, the app installs a custom
+`OkHttpClientFactory` (`com/familywelfareapp/net/NhmSslClientFactory.kt`)
+that:
+
+- Uses the pinned `res/raw/nhm_server.pem` as the sole trust anchor for
+  any HTTPS connection — a stolen or forged cert from anywhere else is
+  still rejected.
+- Tolerates the hostname mismatch **only for the single host
+  `139.5.6.137`**. Every other host still goes through Android's normal
+  strict hostname verification.
+
+The factory is registered in `MainApplication.onCreate()` before React
+Native touches the network stack.
+
+Security-wise this is essentially certificate pinning with a
+narrowly-scoped hostname allow-list. It is more restrictive than the
+default CA store (only ONE certificate is accepted, not the entire
+world's CAs), but the hostname override still gives an attacker who
+somehow obtains the exact backend cert's private key the ability to
+impersonate 139.5.6.137. Removal is described in Section 4.
+
+## 4. Pending server-side action (required to fully close)
+
+To fully close the finding and remove the temporary bridge, the backend
+team must:
+
+1. Provision a valid TLS certificate whose Subject Alternative Name
+   matches the URL host — either:
+   - A DNS name (recommended), e.g. `fpis-api.nhmmp.gov.in`, with a
+     Let's Encrypt / DigiCert / GoI-issued certificate, and update
+     `API_BASE_URL` in `src/constants/api.js` to that hostname; OR
+   - A regenerated self-signed certificate that at least includes
+     `subjectAltName = IP:139.5.6.137,DNS:localhost` while a proper CA
+     cert is being procured. Command for the backend team:
+
+     ```bash
+     openssl req -x509 -newkey rsa:2048 -sha256 -days 1825 -nodes \
+         -keyout server.key -out server.crt \
+         -subj "/CN=139.5.6.137" \
+         -addext "subjectAltName = IP:139.5.6.137,DNS:localhost"
+     ```
+
 2. Enable HTTPS on IIS 10, redirect all HTTP traffic to HTTPS, and
    disable TLS 1.0 / 1.1 (this also closes the matching VAPT findings
    on the server side).
 3. Notify the app team so we can:
-   - Change `API_BASE_URL` in `src/constants/api.js` from `http://` to
-     `https://`.
-   - **Delete** the `<domain-config>` block from
-     `android/app/src/main/res/xml/network_security_config.xml`.
+   - Replace `res/raw/nhm_server.pem` with the new certificate, OR
+     remove the pinning block entirely once a public CA is used.
+   - Delete `NhmSslClientFactory.kt` and its `register(...)` call from
+     `MainApplication.onCreate()`.
    - Cut a new release build and share the fresh SAST scan.
 
 ## 4. Residual risk

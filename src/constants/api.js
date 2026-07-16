@@ -19,14 +19,14 @@ const PORT = 8082;
 const buildDevUrl = () => {
   if (DEV_LAN_IP) return `http://${DEV_LAN_IP}:${PORT}/api`;
   // Android emulator forwards 10.0.2.2 → host machine's localhost.
-  if (Platform.OS === 'android') return `http://139.5.6.137/FPIS_API_APP/api`;
+  if (Platform.OS === 'android') return `https://139.5.6.137/FPIS_API_APP/api`;
   // iOS simulator can hit localhost directly.
   return `http://localhost:${PORT}/api`;
 };
 
 export const API_BASE_URL = __DEV__
   ? buildDevUrl()
-  : 'http://139.5.6.137/FPIS_API_APP/api';
+  : 'https://139.5.6.137/FPIS_API_APP/api';
 
 export const REQUEST_TIMEOUT_MS = 20000;
 export const UPLOAD_TIMEOUT_MS = 45000;
@@ -35,7 +35,7 @@ export const ENDPOINTS = {
   AUTH: {
     LOGIN: '/Auth/login',
     LOGOUT: '/Auth/logout',
-    REFRESH_TOKEN: '/Auth/refresh-token',
+    REFRESH_TOKEN: '/Auth/refresh',
     ME: '/auth/me',
     REGISTER: '/auth/register',
     FORGOT_PASSWORD_REQUEST_OTP: '/auth/forgot-password/request-otp',

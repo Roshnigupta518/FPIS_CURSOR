@@ -6,9 +6,8 @@
  * the token and resets the navigator.
  */
 
-import React, {useCallback, useEffect} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
+import ConfirmModal from '../../components/ConfirmModal';
 import {COLORS} from '../../constants/colors';
 import {ROUTES} from '../../constants/routes';
 import {logout} from '../../redux/slices/authSlice';
@@ -36,6 +36,11 @@ import {changeLanguage} from '../../utils/i18n';
 import {greetingKey} from '../../utils/formatters';
 import { startParichaiAuth } from '../../services/ParichaiAuthService';
 import { LOGIN_TYPES } from '../../constants/facilities';
+import {
+  breakAccessToken,
+  breakRefreshToken,
+  dumpAuthTokens,
+} from '../../utils/authTestHelpers';
 
 const GREETING_KEY_MAP = {
   morning: {en: 'Good morning', hi: 'सुप्रभात'},
@@ -47,7 +52,10 @@ const DashboardScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t, i18n} = useTranslation();
   const user = useSelector(s => s.auth.user);
+  const authLoading = useSelector(s => s.auth.loading);
   const beneficiaries = useSelector(s => s.beneficiary.items);
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   useEffect(() => {
     dispatch(
@@ -92,16 +100,12 @@ const DashboardScreen = ({navigation}) => {
     changeLanguage(i18n.language === 'hi' ? 'en' : 'hi');
   }, [i18n.language]);
 
-  const handleLogout = useCallback(() => {
-    Alert.alert(t('LOGOUT'), t('LOGOUT_CONFIRM'), [
-      {text: t('NO'), style: 'cancel'},
-      {
-        text: t('YES'),
-        style: 'destructive',
-        onPress: () => dispatch(logout()),
-      },
-    ]);
-  }, [dispatch, t]);
+  const openLogoutConfirm = useCallback(() => setShowLogoutModal(true), []);
+  const closeLogoutConfirm = useCallback(() => setShowLogoutModal(false), []);
+  const confirmLogout = useCallback(async () => {
+    await dispatch(logout());
+    setShowLogoutModal(false);
+  }, [dispatch]);
 
   const actions = [
     {
@@ -138,11 +142,12 @@ const DashboardScreen = ({navigation}) => {
     },
     // {
     //   key: 'logout',
+    //   ...
     //   title: t('LOGOUT'),
     //   icon: '🚪',
     //   color: COLORS.error,
     //   bg: COLORS.errorLight,
-    //   onPress: handleLogout,
+    //   onPress: openLogoutConfirm,
     // },
   ];
 
@@ -207,12 +212,57 @@ const DashboardScreen = ({navigation}) => {
           ))}
         </View>
 
+        {/* {__DEV__ && (
+          <View style={styles.devBox}>
+            <Text style={styles.devTitle}>DEV · Refresh Token Test</Text>
+            <View style={styles.devRow}>
+              <View style={styles.devBtn}>
+                <Button
+                  title="Show Tokens"
+                  color={COLORS.info}
+                  onPress={dumpAuthTokens}
+                />
+              </View>
+              <View style={styles.devBtn}>
+                <Button
+                  title="Break Access"
+                  color={COLORS.warning}
+                  onPress={breakAccessToken}
+                />
+              </View>
+              <View style={styles.devBtn}>
+                <Button
+                  title="Break Refresh"
+                  color={COLORS.error}
+                  onPress={breakRefreshToken}
+                />
+              </View>
+            </View>
+            <Text style={styles.devHint}>
+              Tap "Break Access" then navigate to any screen that calls the API
+              — watch Metro for [REFRESH] logs.
+            </Text>
+          </View>
+        )} */}
+
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>{t('MIN_HEALTH')}</Text>
           <Text style={styles.footerText}>{t('GOVT_OF_INDIA')}</Text>
         </View>
       </ScrollView>
+
+      <ConfirmModal
+        visible={showLogoutModal}
+        variant="danger"
+        title={t('LOGOUT')}
+        message={t('LOGOUT_CONFIRM')}
+        confirmLabel={t('YES')}
+        cancelLabel={t('NO')}
+        loading={authLoading}
+        onCancel={closeLogoutConfirm}
+        onConfirm={confirmLogout}
+      />
     </View>
   );
 };
@@ -335,6 +385,36 @@ const styles = StyleSheet.create({
   footerText: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.caption,
+  },
+  devBox: {
+    marginTop: SPACING.xl,
+    padding: SPACING.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: COLORS.warning,
+    borderRadius: RADIUS.md,
+    backgroundColor: '#FFF8E1',
+  },
+  devTitle: {
+    fontSize: FONT_SIZE.small,
+    fontWeight: FONT_WEIGHT.bold,
+    color: COLORS.warning,
+    marginBottom: SPACING.sm,
+    letterSpacing: 0.5,
+  },
+  devRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.xs,
+  },
+  devBtn: {
+    flex: 1,
+  },
+  devHint: {
+    marginTop: SPACING.sm,
+    fontSize: FONT_SIZE.caption,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
   },
 });
 

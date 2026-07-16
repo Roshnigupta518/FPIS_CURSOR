@@ -34,14 +34,53 @@ import {getItem, removeItem, setItem, StorageKeys} from '../../utils/storage';
 /*  Async thunks                                                               */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * Prefer the message the backend actually sent. Only fall back to our
+ * hardcoded Hindi copy when the response has no useful message (network
+ * error, empty body, generic 5xx without a JSON envelope, etc.).
+ *
+ * Some backends wrap the technical error message inside `error` /
+ * `error_description` / `errors[0]` — we peek at all of those before
+ * giving up.
+ */
+const pickBackendMessage = err => {
+  const raw =
+    err?.message ||
+    err?.data?.message ||
+    err?.data?.error ||
+    err?.data?.error_description ||
+    (Array.isArray(err?.errors) && err.errors[0]) ||
+    err?.errors?.[0]?.message;
+
+  if (!raw) {
+    return null;
+  }
+  const trimmed = String(raw).trim();
+  if (!trimmed) {
+    return null;
+  }
+  // Axios sends "Network Error" / "Request failed with status code XXX"
+  // as `err.message` — those aren't real backend messages, so treat as
+  // "no message" and let our hardcoded fallback take over.
+  if (
+    /^network error$/i.test(trimmed) ||
+    /^request failed with status code /i.test(trimmed) ||
+    /^timeout of /i.test(trimmed)
+  ) {
+    return null;
+  }
+  return trimmed;
+};
+
 const mapErrorToPayload = err => {
   const status = err?.status || 0;
-  const backendMessage = err?.message;
+  const backendMessage = pickBackendMessage(err);
 
   if (status === 401 || status === 400) {
     return {
       code: 'INVALID_CREDENTIALS',
-      message: 'गलत User ID या Password। कृपया दुबारा try करें।',
+      message:
+        backendMessage || 'गलत User ID या Password। कृपया दुबारा try करें।',
     };
   }
   if (status === 423) {
@@ -66,19 +105,21 @@ const mapErrorToPayload = err => {
   if (status === 429) {
     return {
       code: 'TOO_MANY_ATTEMPTS',
-      message: 'बहुत ज़्यादा attempts हो गए। कुछ मिनट बाद try करें।',
+      message:
+        backendMessage || 'बहुत ज़्यादा attempts हो गए। कुछ मिनट बाद try करें।',
     };
   }
   if (status >= 500) {
     return {
       code: 'SERVER_ERROR',
-      message: 'Server में समस्या है। थोड़ी देर बाद try करें।',
+      message: backendMessage || 'Server में समस्या है। थोड़ी देर बाद try करें।',
     };
   }
   if (status === 0) {
     return {
       code: 'NETWORK_ERROR',
-      message: 'Internet connection नहीं है। कृपया network check करें।',
+      message:
+        backendMessage || 'Internet connection नहीं है। कृपया network check करें।',
     };
   }
   return {

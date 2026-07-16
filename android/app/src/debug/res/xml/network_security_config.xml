@@ -2,12 +2,15 @@
 <!--
   DEBUG-ONLY network security config.
 
-  During development, Metro bundler runs over plain HTTP on the host
-  machine, so we need to permit cleartext for these dev-time hosts:
-    • localhost / 127.0.0.1  — iOS simulator / adb reverse
-    • 10.0.2.2                — Android emulator → host loopback
-    • 10.0.3.2                — Genymotion → host loopback
-    • 139.5.6.137             — current NHM backend (still HTTP)
+  Trusts:
+    • System CAs (default)
+    • The pinned NHM backend self-signed cert for 139.5.6.137
+      (res/raw/nhm_server.pem — packaged from the main sourceSet).
+
+  Allows cleartext for dev-time hosts only:
+    • localhost / 127.0.0.1  — iOS simulator, adb reverse
+    • 10.0.2.2                — Android emulator loopback
+    • 10.0.3.2                — Genymotion loopback
 
   This file lives under `src/debug/` so it is NEVER packaged into a
   release APK. Release builds pick up the stricter config from
@@ -20,11 +23,20 @@
         </trust-anchors>
     </base-config>
 
+    <!-- NHM backend: self-signed cert pinned as scoped trust anchor. -->
+    <domain-config>
+        <domain includeSubdomains="true">139.5.6.137</domain>
+        <trust-anchors>
+            <certificates src="@raw/nhm_server" />
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Metro / adb reverse dev hosts: HTTP allowed. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">10.0.3.2</domain>
-        <domain includeSubdomains="true">139.5.6.137</domain>
     </domain-config>
 </network-security-config>

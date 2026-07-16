@@ -11,6 +11,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
 
+import com.familywelfareapp.net.NhmSslClientFactory
 import com.familywelfareapp.parichai.ParichaiAuthPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -38,6 +39,12 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+    // TEMPORARY: pin the NHM backend's self-signed certificate and permit
+    // its hostname mismatch (cert CN=localhost, URL=139.5.6.137). Must
+    // run before SoLoader / React Native touches the network stack. See
+    // com.familywelfareapp.net.NhmSslClientFactory for removal criteria.
+    NhmSslClientFactory.register(applicationContext)
+
     SoLoader.init(this, false)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.

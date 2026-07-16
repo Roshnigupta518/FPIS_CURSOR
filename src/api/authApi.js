@@ -12,8 +12,9 @@
  */
 
 import {ENDPOINTS} from '../constants/api';
-import {getDeviceInfo} from '../utils/deviceInfo';
+import {getDeviceId, getDeviceInfo} from '../utils/deviceInfo';
 import {logger} from '../utils/logger';
+import {getItem, StorageKeys} from '../utils/storage';
 import {request} from './axiosInstance';
 
 export const loginApi = async ({userId, password}) => {
@@ -34,18 +35,32 @@ export const loginApi = async ({userId, password}) => {
 };
 
 export const logoutApi = async () => {
-  return request({
+  const [refreshToken, device_id] = await Promise.all([
+    getItem(StorageKeys.REFRESH_TOKEN),
+    getDeviceId(),
+  ]);
+  const body = {refreshToken, device_id};
+  logger.debug('[LOGOUT REQUEST]', body);
+  const response = await request({
     method: 'POST',
     url: ENDPOINTS.AUTH.LOGOUT,
+    data: body,
   });
+  logger.debug('[LOGOUT RESPONSE]', response);
+  return response;
 };
 
 export const refreshTokenApi = async refreshToken => {
-  return request({
+  const device_id = await getDeviceId();
+  const body = {refreshToken, device_id};
+  logger.debug('[REFRESH REQUEST]', body);
+  const response = await request({
     method: 'POST',
     url: ENDPOINTS.AUTH.REFRESH_TOKEN,
-    data: {refreshToken},
+    data: body,
   });
+  logger.debug('[REFRESH RESPONSE]', response);
+  return response;
 };
 
 export const meApi = async () => {

@@ -1,20 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  NHM SAST hardening — Cleartext Traffic Globally Permitted
-  =========================================================
-  Previously the app set android:usesCleartextTraffic="true" on the
-  <application> element, which globally permits HTTP traffic to any
-  host and is what the SAST report flagged (CWE-319, CVSS 6.9).
+  NHM SAST hardening — Cleartext Traffic + backend TLS bridge
+  ===========================================================
+  1. Cleartext HTTP is DENIED globally (base-config). This closes the
+     SAST finding CWE-319 flagged in `AndroidManifest.xml`.
 
-  We now block cleartext by default and grant a *scoped* exception
-  only to the current NHM backend IP (139.5.6.137). All other hosts
-  are forced to HTTPS. This is the standard Android remediation for
-  the SAST finding and lets auditors close it as "scoped mitigation
-  pending server-side HTTPS rollout".
+  2. For the NHM backend at 139.5.6.137 we pin its exact self-signed
+     certificate as a scoped trust anchor (res/raw/nhm_server.pem).
+     Only that one certificate is accepted for this host — every other
+     TLS connection still goes through the system CA store.
 
-  TODO (server team → close audit): once 139.5.6.137 exposes a valid
-  TLS certificate, flip src/constants/api.js to https:// and DELETE
-  the <domain-config> block below so cleartext is fully denied.
+     NOTE: this file alone cannot bypass Android's hostname verification
+     (the cert has CN=localhost but URL host is 139.5.6.137). That side
+     of the bridge lives in Kotlin at
+     com.familywelfareapp.net.NhmSslClientFactory.
+
+  TODO (remove this whole bridge once backend serves a proper CA-signed
+  certificate whose SAN matches the URL host):
+    • Delete the <domain-config> block below.
+    • Delete android/app/src/main/res/raw/nhm_server.pem.
+    • Delete com/familywelfareapp/net/NhmSslClientFactory.kt.
+    • Delete the NhmSslClientFactory.register(...) call from
+      MainApplication.onCreate().
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">
@@ -23,8 +30,11 @@
         </trust-anchors>
     </base-config>
 
-    <!-- TEMPORARY: backend is still on HTTP. Remove once HTTPS is live. -->
-    <domain-config cleartextTrafficPermitted="true">
+    <domain-config>
         <domain includeSubdomains="true">139.5.6.137</domain>
+        <trust-anchors>
+            <certificates src="@raw/nhm_server" />
+            <certificates src="system" />
+        </trust-anchors>
     </domain-config>
 </network-security-config>

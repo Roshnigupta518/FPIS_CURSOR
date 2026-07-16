@@ -16,6 +16,13 @@ import {getItem, setItem, StorageKeys} from './storage';
 
 let cachedDeviceId = null;
 
+/**
+ * Returns the same device_id that we send on login. Used by the refresh
+ * flow so the backend can match the refresh against the exact device
+ * that issued the original session.
+ */
+export const getDeviceId = () => readCachedDeviceId();
+
 const readCachedDeviceId = async () => {
   if (cachedDeviceId) {
     return cachedDeviceId;

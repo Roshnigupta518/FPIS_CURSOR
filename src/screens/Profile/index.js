@@ -5,9 +5,8 @@
  * and logout actions.
  */
 
-import React, {useCallback} from 'react';
+import React, {useCallback, useState} from 'react';
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import {
 import {useTranslation} from 'react-i18next';
 import {useDispatch, useSelector} from 'react-redux';
 
+import ConfirmModal from '../../components/ConfirmModal';
 import CustomHeader from '../../components/CustomHeader';
 import CustomButton from '../../components/CustomButton';
 
@@ -49,24 +49,23 @@ const ProfileScreen = ({navigation}) => {
   const dispatch = useDispatch();
   const {t, i18n} = useTranslation();
   const user = useSelector(s => s.auth.user);
+  const authLoading = useSelector(s => s.auth.loading);
   const fallbackLoginType = useSelector(s => s.auth.loginType);
   const loginType = user?.role || fallbackLoginType;
+
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const toggleLanguage = useCallback(() => {
     const next = i18n.language === 'hi' ? 'en' : 'hi';
     changeLanguage(next);
   }, [i18n.language]);
 
-  const handleLogout = useCallback(() => {
-    Alert.alert(t('LOGOUT'), t('LOGOUT_CONFIRM'), [
-      {text: t('NO'), style: 'cancel'},
-      {
-        text: t('YES'),
-        style: 'destructive',
-        onPress: () => dispatch(logout()),
-      },
-    ]);
-  }, [dispatch, t]);
+  const openLogoutConfirm = useCallback(() => setShowLogoutModal(true), []);
+  const closeLogoutConfirm = useCallback(() => setShowLogoutModal(false), []);
+  const confirmLogout = useCallback(async () => {
+    await dispatch(logout());
+    setShowLogoutModal(false);
+  }, [dispatch]);
 
   return (
     <View style={styles.flex}>
@@ -128,13 +127,25 @@ const ProfileScreen = ({navigation}) => {
           <CustomButton
             title={t('LOGOUT')}
             variant="danger"
-            onPress={handleLogout}
+            onPress={openLogoutConfirm}
           />
         </View>
 
         <Text style={styles.footer}>{t('MIN_HEALTH')}</Text>
         <Text style={styles.footer}>{t('GOVT_OF_INDIA')}</Text>
       </ScrollView>
+
+      <ConfirmModal
+        visible={showLogoutModal}
+        variant="danger"
+        title={t('LOGOUT')}
+        message={t('LOGOUT_CONFIRM')}
+        confirmLabel={t('YES')}
+        cancelLabel={t('NO')}
+        loading={authLoading}
+        onCancel={closeLogoutConfirm}
+        onConfirm={confirmLogout}
+      />
     </View>
   );
 };
