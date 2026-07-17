@@ -9,6 +9,7 @@ import com.facebook.react.ReactPackage
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
+import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
 import com.familywelfareapp.net.NhmSslClientFactory
@@ -45,7 +46,13 @@ class MainApplication : Application(), ReactApplication {
     // com.familywelfareapp.net.NhmSslClientFactory for removal criteria.
     NhmSslClientFactory.register(applicationContext)
 
-    SoLoader.init(this, false)
+    // RN 0.79 consolidated ~30 tiny .so files into one big `libreactnative.so`.
+    // OpenSourceMergedSoMapping tells SoLoader "when someone asks for
+    // `react_featureflagsjni` / `reactnativejni` / `turbomodulejsijni` /
+    // etc., load `libreactnative.so` instead". Missing this mapping is
+    // what caused the runtime UnsatisfiedLinkError we hit after the RN
+    // 0.74 → 0.79 bump (the old `SoLoader.init(this, false)` API is gone).
+    SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.
       load()

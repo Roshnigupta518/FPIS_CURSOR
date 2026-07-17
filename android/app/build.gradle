@@ -49,6 +49,14 @@ react {
     //
     //   The list of flags to pass to the Hermes compiler. By default is "-O", "-output-source-map"
     // hermesFlags = ["-O", "-output-source-map"]
+
+    // RN 0.76 autolinking hook — replaces the old
+    // `apply from: file("...native_modules.gradle"); applyNativeModulesAppBuildGradle(project)`
+    // line that used to sit at the bottom of this file. Reads
+    // `build/generated/autolinking/autolinking.json` (produced by the
+    // `autolinkLibrariesFromCommand()` call in settings.gradle) and wires
+    // every autolinked native module into this :app project.
+    autolinkLibrariesWithApp()
 }
 
 /**
@@ -87,8 +95,8 @@ android {
         applicationId "com.familywelfareapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
-        versionName "1.0.2"
+        versionCode 8
+        versionName "1.0.3"
     }
 
      buildFeatures {
@@ -149,4 +157,3 @@ dependencies {
     }
 }
 
-apply from: file("../../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesAppBuildGradle(project)
