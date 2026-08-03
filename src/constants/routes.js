@@ -15,4 +15,5 @@ export const ROUTES = {
   BENEFICIARY_DETAILS: 'BeneficiaryDetails',
   PROFILE: 'Profile',
   MY_REPORT: 'MyReport',
+  SECURITY_BLOCKED: 'SecurityBlocked',
 };

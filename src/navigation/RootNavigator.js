@@ -10,7 +10,7 @@
  *    authenticated stack based on Redux auth state.
  */
 
-import React, {useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View, Image} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -20,6 +20,7 @@ import {COLORS, IMAGES} from '../constants/colors';
 import {ROUTES} from '../constants/routes';
 import {bootstrapAuth} from '../redux/slices/authSlice';
 import {FONT_SIZE, FONT_WEIGHT, SPACING} from '../styles/theme';
+import {checkDeviceSecurity} from '../utils/securityCheck';
 
 import LoginScreen from '../screens/Login';
 import ChangePasswordScreen from '../screens/ChangePassword';
@@ -32,6 +33,7 @@ import BeneficiaryListScreen from '../screens/BeneficiaryList';
 import BeneficiaryDetailsScreen from '../screens/BeneficiaryDetails';
 import ProfileScreen from '../screens/Profile';
 import MyReportScreen from '../screens/MyReport';
+import SecurityBlockedScreen from '../screens/SecurityBlockedScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -55,12 +57,33 @@ const Splash = () => (
 const RootNavigator = () => {
   const dispatch = useDispatch();
   const {isAuthenticated, bootstrapping} = useSelector(s => s.auth);
+  const [isRooted, setIsRooted] = useState(false);
+  const [securityChecked, setSecurityChecked] = useState(false);
 
   useEffect(() => {
+    const initApp = async () => {
+      try {
+        const security = await checkDeviceSecurity();
+        if (security.isRooted) {
+          setIsRooted(true);
+        }
+      } catch (err) {
+        console.warn('[RootNavigator] Device security check error:', err);
+      } finally {
+        setSecurityChecked(true);
+      }
+    };
+
+    initApp();
     dispatch(bootstrapAuth());
   }, [dispatch]);
 
-  if (bootstrapping) return <Splash />;
+  if (isRooted) {
+    return <SecurityBlockedScreen />;
+  }
+  if (bootstrapping || !securityChecked) {
+    return <Splash />;
+  }
 
   return (
     <NavigationContainer>
@@ -141,7 +164,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: SPACING.md,
   },
-  logoText: {fontSize: 40, color: COLORS.primary},
   appTitle: {
     color: '#fff',
     fontSize: FONT_SIZE.display,
