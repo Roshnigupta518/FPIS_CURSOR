@@ -27,7 +27,7 @@
 # Obfuscate, but do not shrink / optimize aggressively. This is deliberately
 # conservative for a React Native app because RN uses reflection and
 # annotation-driven bridges that get confused by aggressive R8 rules.
--dontshrink
+
 -dontoptimize
 
 # Repackage all obfuscated classes into a single top-level package so smali
