@@ -14,6 +14,7 @@ import com.facebook.soloader.SoLoader
 
 import com.familywelfareapp.net.NhmSslClientFactory
 import com.familywelfareapp.parichai.ParichaiAuthPackage
+import com.familywelfareapp.security.RootDetectionPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -25,6 +26,7 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
 
                add(ParichaiAuthPackage())
+               add(RootDetectionPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

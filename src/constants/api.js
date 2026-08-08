@@ -8,25 +8,7 @@
  * Switch to PROD_BASE_URL when shipping a release build.
  */
 
-import {Platform} from 'react-native';
-
-// >>> Set this to your Mac's LAN IP when testing on a physical phone.
-//     e.g. '192.168.1.42'. Find it via System Settings → Network → Wi-Fi.
-const DEV_LAN_IP = null;
-
-const PORT = 8082;
-
-const buildDevUrl = () => {
-  if (DEV_LAN_IP) return `http://${DEV_LAN_IP}:${PORT}/api`;
-  // Android emulator forwards 10.0.2.2 → host machine's localhost.
-  if (Platform.OS === 'android') return `https://139.5.6.137/FPIS_API_APP/api`;
-  // iOS simulator can hit localhost directly.
-  return `http://localhost:${PORT}/api`;
-};
-
-export const API_BASE_URL = __DEV__
-  ? buildDevUrl()
-  : 'https://139.5.6.137/FPIS_API_APP/api';
+export const API_BASE_URL = 'https://fwmis.nhmmp.gov.in/FPISAPI/api' //'https://139.5.6.137/FPIS_API_APP/api';
 
 export const REQUEST_TIMEOUT_MS = 20000;
 export const UPLOAD_TIMEOUT_MS = 45000;
