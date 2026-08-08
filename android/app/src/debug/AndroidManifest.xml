@@ -4,15 +4,13 @@
 
     <!--
       Debug-only overrides. The main manifest declares
-      android:networkSecurityConfig="@xml/network_security_config"
+     
       which resolves to the strict release config. For debug builds
       we replace it with the permissive dev-time config at
-      src/debug/res/xml/network_security_config.xml so Metro bundler
+    
       (HTTP on localhost / 10.0.2.2) keeps working.
     -->
     <application
-        android:networkSecurityConfig="@xml/network_security_config"
-        tools:replace="android:networkSecurityConfig"
         tools:targetApi="28"
         tools:ignore="GoogleAppIndexingWarning" />
 </manifest>
