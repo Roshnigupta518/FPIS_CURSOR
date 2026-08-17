@@ -285,18 +285,6 @@ src/
     └── beneficiarySlice.js      ← fetch/fetchMore/byId/create/update/delete/faceAuth
 ```
 
-### Base URL
-
-Set automatically per platform in `src/constants/api.js`:
-
-| Platform                 | URL used                                |
-| ------------------------ | --------------------------------------- |
-| Android emulator         | `http://10.0.2.2:8082/api`              |
-| iOS simulator            | `http://localhost:8082/api`             |
-| Physical phone (USB/Wi-Fi)| `http://<your-mac-LAN-ip>:8082/api`     |
-
-For a physical phone, edit the `DEV_LAN_IP` constant at the top of
-`src/constants/api.js` to your Mac's LAN IP (System Settings → Network → Wi-Fi).
 
 ### JWT handling
 

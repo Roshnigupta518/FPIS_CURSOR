@@ -1,13 +1,3 @@
-/**
- * API base URLs + endpoint paths.
- *
- * Use the platform-aware base URL so the same code works on
- * Android emulator (10.0.2.2), iOS simulator (localhost), and
- * physical devices (LAN IP — fill DEV_LAN_IP below).
- *
- * Switch to PROD_BASE_URL when shipping a release build.
- */
-
 export const API_BASE_URL = 'https://fwmis.nhmmp.gov.in/FPISAPI/api' //'https://139.5.6.137/FPIS_API_APP/api';
 
 export const REQUEST_TIMEOUT_MS = 20000;

@@ -2,14 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!--
-      Debug-only overrides. The main manifest declares
-     
-      which resolves to the strict release config. For debug builds
-      we replace it with the permissive dev-time config at
-    
-      (HTTP on localhost / 10.0.2.2) keeps working.
-    -->
+  
     <application
         tools:targetApi="28"
         tools:ignore="GoogleAppIndexingWarning" />
