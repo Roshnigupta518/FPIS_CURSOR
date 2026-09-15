@@ -116,10 +116,14 @@ const mapErrorToPayload = err => {
     };
   }
   if (status === 0) {
+    if (__DEV__) {
+      console.warn('[AuthApi Debug] Network request failed (status 0):', err);
+    }
+    const devDetails = __DEV__ && err?.message ? ` (Debug: ${err.message})` : '';
     return {
       code: 'NETWORK_ERROR',
       message:
-        backendMessage || 'Internet connection नहीं है। कृपया network check करें।',
+        (backendMessage || 'Internet connection नहीं है। कृपया network check करें।') + devDetails,
     };
   }
   return {
