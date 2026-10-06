@@ -57,6 +57,7 @@ react {
     // `autolinkLibrariesFromCommand()` call in settings.gradle) and wires
     // every autolinked native module into this :app project.
     autolinkLibrariesWithApp()
+    nodeExecutableAndArgs = ["/Users/Geeta/.nvm/versions/node/v20.20.2/bin/node"]
 }
 
 /**
@@ -129,11 +130,11 @@ android {
             // signingConfig signingConfigs.debug
             // minifyEnabled enableProguardInReleaseBuilds
             // proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-              minifyEnabled true
-              shrinkResources true
+              minifyEnabled false //true
+              shrinkResources false //true
 
-             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"),
-            "proguard-rules.pro"
+            //  proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"),
+            // "proguard-rules.pro"
             signingConfig signingConfigs.release
         }
     }

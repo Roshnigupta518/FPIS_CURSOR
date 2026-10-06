@@ -122,6 +122,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
 
     // 2) Parichai SDK kholo. SDK fail ho ya key na de -> referenceKey null rakhenge.
     let referenceKey = null;
+    let transactionCode = null;
     let authSuccess = false;
     try {
       const sdkResponse = await startParichaiAuth({
@@ -160,6 +161,14 @@ const BeneficiaryFormScreen = ({ navigation }) => {
           parsed?.refKey !== undefined
             ? String(parsed.refKey)
             : null;
+
+        const rawTxCode =
+          parsed?.transactionCode
+
+        transactionCode =
+          rawTxCode !== undefined && rawTxCode !== null
+            ? String(rawTxCode)
+            : null;
       }
 
     } catch (e) {
@@ -180,6 +189,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
       facilityTypeId: facility?.health_facility_type_id,   // <- naya
       referenceKey,                                          // null when auth failed
       transactionId: aadhaar.transactionId,
+      transactionCode,
     };
 
     const result = await dispatch(createBeneficiary(payload));

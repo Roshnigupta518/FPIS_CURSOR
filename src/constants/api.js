@@ -1,4 +1,5 @@
 export const API_BASE_URL = 'https://fwmis.nhmmp.gov.in/FPISAPI/api' //'https://139.5.6.137/FPIS_API_APP/api';
+// export const API_BASE_URL = 'https://139.5.6.137/FPIS_API_APP/api';
 
 export const REQUEST_TIMEOUT_MS = 20000;
 export const UPLOAD_TIMEOUT_MS = 45000;

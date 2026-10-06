@@ -199,5 +199,6 @@ export const beneficiaryToServer = (form, extras = {}) => {
     face_auth_image:     '',  // face-auth screen later
     reference_key:       clean(form.referenceKey),
     transaction_id:      clean(form.transactionId),
+    transaction_Code:      clean(form.transactionCode),
   };
 };
