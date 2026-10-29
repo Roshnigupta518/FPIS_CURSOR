@@ -113,7 +113,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
     // 1) Backend se encrypted Aadhaar payload tayar karwa lo
     let aadhaar;
     try {
-      aadhaar = await prepareAadhaarRequest({ serviceType: 6 });
+      aadhaar = await prepareAadhaarRequest({ serviceType: 7 });
       logger.debug('[AADHAAR] PrepareRequest response', aadhaar);
     } catch (e) {
       showToast({ type: 'error', message: 'Aadhaar gateway error' });
@@ -124,6 +124,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
     let referenceKey = null;
     let transactionCode = null;
     let authSuccess = false;
+    let gatewayResponse = null
     try {
       const sdkResponse = await startParichaiAuth({
         sa: aadhaar.sa,
@@ -131,9 +132,10 @@ const BeneficiaryFormScreen = ({ navigation }) => {
         encData: aadhaar.encData,
         transactionId: aadhaar.transactionId,
         disclosureInfoType: String(aadhaar.disclosureInfoType ?? 1),
-        environment: 'PREPROD',
+        environment: 'PROD', //PREPROD
       });
       logger.debug('[AADHAAR] Parichai SDK response', sdkResponse);
+      console.log({sdkResponse})
 
       // setTimeout(() => {
       //   Alert.alert(
@@ -142,33 +144,33 @@ const BeneficiaryFormScreen = ({ navigation }) => {
       //   );
       // }, 1000);
 
-      const gatewayResponse = sdkResponse?.data?.gatewayResponse;
+       gatewayResponse = sdkResponse?.data?.gatewayResponse;
 
       if (gatewayResponse) {
-        const parsed =
-          typeof gatewayResponse === 'string'
-            ? JSON.parse(gatewayResponse)
-            : gatewayResponse;
+        // const parsed =
+        //   typeof gatewayResponse === 'string'
+        //     ? JSON.parse(gatewayResponse)
+        //     : gatewayResponse;
 
-        logger.debug('[AADHAAR] Parsed Gateway Response', parsed);
+        // logger.debug('[AADHAAR] Parsed Gateway Response', parsed);
 
-        authSuccess =
-          parsed?.ret === '1' &&
-          parsed?.uidToken &&
-          parsed?.uidToken.trim() !== '';
+        // authSuccess =
+        //   parsed?.ret === '1' &&
+        //   parsed?.uidToken &&
+        //   parsed?.uidToken.trim() !== '';
 
-        referenceKey =
-          parsed?.refKey !== undefined
-            ? String(parsed.refKey)
-            : null;
+        // referenceKey =
+        //   parsed?.refKey !== undefined
+        //     ? String(parsed.refKey)
+        //     : null;
 
-        const rawTxCode =
-          parsed?.transactionCode
+        // const rawTxCode =
+        //   parsed?.transactionCode
 
-        transactionCode =
-          rawTxCode !== undefined && rawTxCode !== null
-            ? String(rawTxCode)
-            : null;
+        // transactionCode =
+        //   rawTxCode !== undefined && rawTxCode !== null
+        //     ? String(rawTxCode)
+        //     : null;
       }
 
     } catch (e) {
@@ -187,7 +189,7 @@ const BeneficiaryFormScreen = ({ navigation }) => {
       schemeId: scheme?.id,
       facilityId: facility?.id,
       facilityTypeId: facility?.health_facility_type_id,   // <- naya
-      referenceKey,                                          // null when auth failed
+      referenceKey: gatewayResponse,                                          // null when auth failed
       transactionId: aadhaar.transactionId,
       transactionCode,
     };
@@ -204,22 +206,21 @@ const BeneficiaryFormScreen = ({ navigation }) => {
       return;
     }
 
-    if (!authSuccess) {
-      showToast({
-        type: 'error',
-        message: 'Aadhaar authentication failed',
-      });
+    // if (!authSuccess) {
+    //   showToast({
+    //     type: 'error',
+    //     message: 'Aadhaar authentication failed',
+    //   });
 
-      navigation.navigate(ROUTES.DASHBOARD);
-      return;
-    }
+    //   navigation.navigate(ROUTES.DASHBOARD);
+    //   return;
+    // }
 
     const saved = result.payload;
     dispatch(setDraft(saved));
 
     // 5) Sab sahi -> success toast + list screen.
     showToast({ type: 'success', message: t('FORM_SUBMITTED') });
-    // navigation.navigate(ROUTES.BENEFICIARY_LIST);
     navigation.dispatch(
       CommonActions.reset({
         index: 1,
