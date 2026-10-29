@@ -70,13 +70,13 @@ const DashboardScreen = ({navigation}) => {
     GREETING_KEY_MAP[greetingKey()].en;
 
   const total = useSelector(s => s.beneficiary.total);
-  const totalCount = total || beneficiaries.length;
-  const pendingCount = beneficiaries.filter(
-    b => b.status === 'PENDING_AUTH' || b.status === 'AUTH_FAILED',
-  ).length;
-  const submittedCount = beneficiaries.filter(
-    b => b.status === 'SUBMITTED',
-  ).length;
+  // const totalCount = total || beneficiaries.length;
+  // const pendingCount = beneficiaries.filter(
+  //   b => b.status === 'PENDING_AUTH' || b.status === 'AUTH_FAILED',
+  // ).length;
+  // const submittedCount = beneficiaries.filter(
+  //   b => b.status === 'SUBMITTED',
+  // ).length;
 
   const goAddBeneficiary = useCallback(() => {
     dispatch(clearFacility());

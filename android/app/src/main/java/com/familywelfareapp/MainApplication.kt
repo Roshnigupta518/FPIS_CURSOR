@@ -12,6 +12,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
+import com.familywelfareapp.net.CustomSslClientFactory
 import com.familywelfareapp.parichai.ParichaiAuthPackage
 import com.familywelfareapp.security.RootDetectionPackage
 
@@ -41,6 +42,8 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+
+    CustomSslClientFactory.register()
 
     SoLoader.init(this, OpenSourceMergedSoMapping)
 

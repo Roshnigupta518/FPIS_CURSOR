@@ -152,7 +152,7 @@ const BeneficiaryListScreen = ({navigation}) => {
       ) : (
         <FlatList
           data={items}
-          keyExtractor={item => String(item.id)}
+          keyExtractor={(item, index) => String(item?.id || index)}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={

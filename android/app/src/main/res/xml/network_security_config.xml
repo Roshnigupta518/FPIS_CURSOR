@@ -8,6 +8,8 @@
     </base-config>
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">fwmis.nhmmp.gov.in</domain>
+        <domain includeSubdomains="true">nhmmp.gov.in</domain>
+        <domain includeSubdomains="true">139.5.6.137</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
         <trust-anchors>
