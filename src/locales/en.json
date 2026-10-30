@@ -143,5 +143,6 @@
   "ERR_INVALID_USERID": "User ID must be at least 3 characters",
   "ERR_INVALID_OTP": "Enter the 6-digit OTP",
   "ERR_PASSWORD_TOO_SHORT": "Password must be at least 6 characters",
-  "ERR_PASSWORDS_DO_NOT_MATCH": "Passwords do not match"
+  "ERR_PASSWORDS_DO_NOT_MATCH": "Passwords do not match",
+  "RefKey" : "Reference Key"
 }

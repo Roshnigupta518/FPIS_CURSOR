@@ -134,6 +134,7 @@ export const mapBeneficiary = row => {
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    reference_key : row.reference_key || ''
   };
 };
 

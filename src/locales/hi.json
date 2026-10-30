@@ -143,5 +143,6 @@
   "ERR_INVALID_USERID": "यूज़र आईडी कम से कम 3 अक्षर की होनी चाहिए",
   "ERR_INVALID_OTP": "6 अंकों का OTP दर्ज करें",
   "ERR_PASSWORD_TOO_SHORT": "पासवर्ड कम से कम 6 अक्षर का होना चाहिए",
-  "ERR_PASSWORDS_DO_NOT_MATCH": "पासवर्ड मेल नहीं खाते"
+  "ERR_PASSWORDS_DO_NOT_MATCH": "पासवर्ड मेल नहीं खाते",
+  "RefKey" : "रिफरेन्स की"
 }

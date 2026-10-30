@@ -187,6 +187,7 @@ const BeneficiaryDetailsScreen = ({navigation, route}) => {
           <DetailRow label={t('SAMAGRA_ID')} value={item.samagraId} />
           <DetailRow label={t('MOBILE')} value={item.mobile} />
           <DetailRow label={t('ADDRESS')} value={item.address} />
+          <DetailRow label={t('RefKey')} value={item.reference_key} />
         </SectionCard>
 
         <SectionCard title={t('SCHEME_DETAILS')} icon="📋">
